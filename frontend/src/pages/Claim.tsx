@@ -18,7 +18,7 @@ export const ClaimPage: React.FC = () => {
 
         claimEnvelope(
             id,
-            (digest) => {
+            () => {
                 setStatus('success');
             },
             (err) => {

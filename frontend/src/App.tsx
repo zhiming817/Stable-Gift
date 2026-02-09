@@ -4,6 +4,7 @@ import { Home } from './pages/Home';
 import { CreatePage } from './pages/Create';
 import { ClaimPage } from './pages/Claim';
 import { Dashboard } from './pages/Dashboard';
+import { MintTestPage } from './pages/MintTest';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
                 <Route path="/create" element={<CreatePage />} />
                 <Route path="/claim" element={<ClaimPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/mint" element={<MintTestPage />} />
             </Routes>
         </main>
         <Footer />

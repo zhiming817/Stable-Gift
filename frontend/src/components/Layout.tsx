@@ -18,6 +18,7 @@ export const Header: React.FC = () => {
                     <Link to="/create" className="text-slate-300 hover:text-white transition-colors">Send Gift</Link>
                     <Link to="/claim" className="text-slate-300 hover:text-white transition-colors">Claim</Link>
                     <Link to="/dashboard" className="text-slate-300 hover:text-white transition-colors">Dashboard</Link>
+                    <Link to="/mint" className="text-cyan-400/80 hover:text-cyan-400 transition-colors font-medium border border-cyan-500/30 px-3 py-1 rounded-full text-xs">Mint Test</Link>
                 </nav>
 
                 <div className="flex items-center gap-4">

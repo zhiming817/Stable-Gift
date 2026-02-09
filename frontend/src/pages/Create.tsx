@@ -3,13 +3,7 @@ import { useCurrentAccount } from '@mysten/dapp-kit';
 import { cn, Button } from '../components/ui';
 import { useContract } from '../hooks/useContract';
 import { useNavigate } from 'react-router-dom';
-import { Coins, Settings, Info } from 'lucide-react';
-import { createPortal } from 'react-dom';
-
-const COIN_TYPES = [
-    { symbol: 'SUI', name: 'Sui Token', icon: '💧' },
-    // { symbol: 'USDC', name: 'USD Circle', icon: '💵' }, // Future support
-];
+import { Coins, Info } from 'lucide-react';
 
 export const CreatePage: React.FC = () => {
     const account = useCurrentAccount();
@@ -17,7 +11,6 @@ export const CreatePage: React.FC = () => {
     const { createEnvelope } = useContract();
     
     // Form State
-    const [amount, setAmount] = useState('');
     const [count, setCount] = useState('1');
     const [mode, setMode] = useState<0 | 1>(0); // 0=Random, 1=Equal
     const [loading, setLoading] = useState(false);
@@ -38,7 +31,7 @@ export const CreatePage: React.FC = () => {
             coinId,
             parseInt(count),
             mode,
-            (digest) => {
+            () => {
                 setLoading(false);
                 setShowModal(true); // Show success modal
             },

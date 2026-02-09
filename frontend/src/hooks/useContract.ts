@@ -1,10 +1,9 @@
-import { useSignAndExecuteTransaction, useSuiClient } from "@mysten/dapp-kit";
+import { useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { PACKAGE_ID, MODULE_NAME, SUI_RANDOM_ID } from "../constants";
 
 export const useContract = () => {
     const { mutate: signAndExecute } = useSignAndExecuteTransaction();
-    const suiClient = useSuiClient();
 
     const createEnvelope = async (
         coinId: string,
