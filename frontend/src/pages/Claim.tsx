@@ -4,7 +4,7 @@ import { useContract } from '../hooks/useContract';
 import { Button } from '../components/ui';
 import { Loader2, PartyPopper, Gift, Info, ExternalLink } from 'lucide-react';
 import { useSuiClient } from '@mysten/dapp-kit';
-import { NETWORK } from '../constants';
+import { NETWORK, getCoinConfig, formatAmount } from '../constants';
 
 export const ClaimPage: React.FC = () => {
     const { id: urlId } = useParams<{ id: string }>();
@@ -141,13 +141,23 @@ export const ClaimPage: React.FC = () => {
                                             <Gift className="w-4 h-4 text-cyan-400" />
                                             <span className="text-xs text-slate-400">Total Gift Value</span>
                                         </div>
-                                        <span className="text-sm font-mono text-cyan-300 font-bold">{envelopeData.totalAmount}</span>
+                                        {(() => {
+                                            const config = getCoinConfig(envelopeData.type);
+                                            const amount = formatAmount(envelopeData.totalAmount, config?.decimals || 9);
+                                            const symbol = config?.symbol || "Unknown";
+                                            return (
+                                                <span className="text-sm font-mono text-cyan-300 font-bold">
+                                                    {amount} {symbol}
+                                                </span>
+                                            );
+                                        })()}
                                     </div>
                                     <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
                                         <span className="text-slate-600 italic">Asset Type</span>
                                         {(() => {
+                                            const config = getCoinConfig(envelopeData.type);
                                             const fullType = envelopeData.type.match(/<([^>]*)>/)?.[1] || "0x2::sui::SUI";
-                                            const shortName = fullType.split('::').pop();
+                                            const shortName = config?.symbol || fullType.split('::').pop();
                                             return (
                                                 <a 
                                                     href={`https://suiscan.xyz/${NETWORK}/coin/${fullType}/traders`}

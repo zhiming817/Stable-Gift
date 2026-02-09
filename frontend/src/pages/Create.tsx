@@ -1,40 +1,77 @@
-import React, { useState } from 'react';
-import { useCurrentAccount } from '@mysten/dapp-kit';
+import React, { useState, useEffect } from 'react';
+import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit';
 import { cn, Button } from '../components/ui';
 import { useContract } from '../hooks/useContract';
 import { useNavigate } from 'react-router-dom';
-import { Coins, Info } from 'lucide-react';
-import { PACKAGE_ID, NETWORK } from '../constants';
+import { Coins, Info, CheckCircle2 } from 'lucide-react';
+import { PACKAGE_ID, NETWORK, COIN_OPTIONS } from '../constants';
 
 export const CreatePage: React.FC = () => {
     const account = useCurrentAccount();
+    const client = useSuiClient(); 
     const navigate = useNavigate();
     const { createEnvelope } = useContract();
     
     // Form State
+    const [selectedCoin, setSelectedCoin] = useState(COIN_OPTIONS[0]);
+    const [amount, setAmount] = useState('');
     const [count, setCount] = useState('1');
     const [mode, setMode] = useState<0 | 1>(0); // 0=Random, 1=Equal
+    
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
-    const [coinId, setCoinId] = useState(''); // In real app, we need to select a Coin Object
+    const [balance, setBalance] = useState<bigint>(0n);
+    const [checkingBalance, setCheckingBalance] = useState(false);
 
-    // Note: In a real app, we need a CoinSelector component to pick a specific Coin Object ID with enough balance.
-    // For this demo, let's assume the user pastes a coin object ID (like in the CLI test)
-    // OR we implement a simple coin selection logic later.
+    // Check Balance when Coin or Account changes
+    useEffect(() => {
+        const fetchBalance = async () => {
+            if (!account) return;
+            setCheckingBalance(true);
+            try {
+                if (selectedCoin.type === '0x2::sui::SUI') {
+                    const { totalBalance } = await client.getBalance({ owner: account.address });
+                    setBalance(BigInt(totalBalance));
+                } else {
+                    const { data } = await client.getCoins({ owner: account.address, coinType: selectedCoin.type });
+                    const total = data.reduce((acc, coin) => acc + BigInt(coin.balance), 0n);
+                    setBalance(total);
+                }
+            } catch (e) {
+                console.error("Failed to fetch balance", e);
+                setBalance(0n);
+            } finally {
+                setCheckingBalance(false);
+            }
+        };
+
+        fetchBalance();
+        const interval = setInterval(fetchBalance, 10000);
+        return () => clearInterval(interval);
+    }, [account, selectedCoin, client]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!account) return alert("Please connect wallet");
-        if (!coinId) return alert("Please enter a Coin Object ID (Split a coin first in CLI/Wallet for now)");
+        if (!amount || parseFloat(amount) <= 0) return alert("Invalid amount");
+
+        // Calculate raw amount
+        const rawAmount = BigInt(Math.floor(parseFloat(amount) * Math.pow(10, selectedCoin.decimals)));
+        
+        // Balance Check
+        if (balance < rawAmount) {
+            return alert(`Insufficient Balance! You have ${(Number(balance) / Math.pow(10, selectedCoin.decimals)).toFixed(4)} ${selectedCoin.symbol}, but need ${amount}.`);
+        }
 
         setLoading(true);
         createEnvelope(
-            coinId,
+            selectedCoin.type,
+            rawAmount,
             parseInt(count),
             mode,
             () => {
                 setLoading(false);
-                setShowModal(true); // Show success modal
+                setShowModal(true); 
             },
             (err) => {
                 console.error(err);
@@ -58,48 +95,79 @@ export const CreatePage: React.FC = () => {
                 {/* Coin Selection */}
                 <div className="space-y-2">
                     <label className="text-sm text-slate-400 font-medium">Select Currency</label>
-                    <div className="grid grid-cols-1 gap-2">
-                         {/* Simplified for demo: Just an Input for Coin Object ID */}
-                         <input 
-                            type="text" 
-                            className="w-full bg-slate-900/50 border border-slate-700 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-cyan-500 outline-none"
-                            placeholder="Paste Coin Object ID (Temporarily)"
-                            value={coinId}
-                            onChange={e => setCoinId(e.target.value)}
-                         />
-                         <p className="text-xs text-yellow-500/80">* For this demo, please split a coin in wallet/CLI and paste ID here.</p>
+                    <div className="grid grid-cols-3 gap-2">
+                         {COIN_OPTIONS.map((c) => (
+                             <button
+                                key={c.symbol}
+                                type="button"
+                                onClick={() => setSelectedCoin(c)}
+                                className={cn(
+                                    "flex items-center justify-center h-12 rounded-lg border transition-all text-sm font-bold",
+                                    selectedCoin.symbol === c.symbol 
+                                        ? "bg-cyan-500/20 border-cyan-500 text-cyan-300" 
+                                        : "bg-slate-900/50 border-slate-700 text-slate-500 hover:border-slate-500"
+                                )}
+                             >
+                                 {c.symbol}
+                             </button>
+                         ))}
                     </div>
+                    {account && (
+                        <div className="text-xs text-right text-slate-400">
+                             Balance: <span className="text-white font-mono">
+                                 {checkingBalance ? "..." : (Number(balance) / Math.pow(10, selectedCoin.decimals)).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                             </span> {selectedCoin.symbol}
+                        </div>
+                    )}
                 </div>
 
                 {/* Amount & Count */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-sm text-slate-400 font-medium">Quantity</label>
-                        <input 
-                            type="number" 
-                            min="1"
-                            className="w-full bg-slate-900/50 border border-slate-700 rounded-lg h-12 px-4 text-white text-lg font-mono focus:ring-2 focus:ring-cyan-500 outline-none"
-                            value={count}
-                            onChange={e => setCount(e.target.value)}
-                        />
+                        <label className="text-sm text-slate-400 font-medium">Total Amount</label>
+                        <div className="relative">
+                            <input 
+                                type="number" 
+                                className="w-full bg-slate-900/50 border border-slate-700 rounded-lg h-12 pl-4 pr-12 text-white text-lg font-mono focus:ring-2 focus:ring-cyan-500 outline-none"
+                                placeholder="0.0"
+                                value={amount}
+                                onChange={e => setAmount(e.target.value)}
+                            />
+                            <div className="absolute right-4 top-3 text-slate-500 text-sm font-bold">
+                                {selectedCoin.symbol}
+                            </div>
+                        </div>
                     </div>
-                     <div className="space-y-2">
-                        <label className="text-sm text-slate-400 font-medium">Mode</label>
-                        <div className="flex bg-slate-900/50 p-1 rounded-lg h-12 border border-slate-700">
-                            <button 
-                                type="button"
-                                onClick={() => setMode(0)}
-                                className={cn("flex-1 rounded-md text-sm font-medium transition-all", mode === 0 ? "bg-cyan-500/20 text-cyan-300" : "text-slate-500")}
-                            >
-                                Random 🎲
-                            </button>
-                            <button 
-                                type="button"
-                                onClick={() => setMode(1)}
-                                className={cn("flex-1 rounded-md text-sm font-medium transition-all", mode === 1 ? "bg-cyan-500/20 text-cyan-300" : "text-slate-500")}
-                            >
-                                Equal 🤝
-                            </button>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm text-slate-400 font-medium">Quantity</label>
+                            <input 
+                                type="number" 
+                                min="1"
+                                className="w-full bg-slate-900/50 border border-slate-700 rounded-lg h-12 px-4 text-white text-lg font-mono focus:ring-2 focus:ring-cyan-500 outline-none"
+                                value={count}
+                                onChange={e => setCount(e.target.value)}
+                            />
+                        </div>
+                         <div className="space-y-2">
+                            <label className="text-sm text-slate-400 font-medium">Mode</label>
+                            <div className="flex bg-slate-900/50 p-1 rounded-lg h-12 border border-slate-700">
+                                <button 
+                                    type="button"
+                                    onClick={() => setMode(0)}
+                                    className={cn("flex-1 rounded-md text-sm font-medium transition-all", mode === 0 ? "bg-cyan-500/20 text-cyan-300" : "text-slate-500")}
+                                >
+                                    Random
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setMode(1)}
+                                    className={cn("flex-1 rounded-md text-sm font-medium transition-all", mode === 1 ? "bg-cyan-500/20 text-cyan-300" : "text-slate-500")}
+                                >
+                                    Equal
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -110,13 +178,25 @@ export const CreatePage: React.FC = () => {
                         <Info className="w-4 h-4" />
                         <span className="font-bold">Summary</span>
                     </div>
-                    <p>You are creating <span className="text-white font-bold">{count}</span> envelopes.</p>
-                    <p>Mode: <span className="text-white">{mode === 0 ? "Random Luck" : "Equal Split"}</span></p>
+                    <p className="flex justify-between">
+                        <span>Total:</span>
+                        <span className="text-white font-mono">{amount || "0"} {selectedCoin.symbol}</span>
+                    </p>
+                    <p className="flex justify-between">
+                        <span>Envelopes:</span>
+                        <span className="text-white">{count}</span>
+                    </p>
+                    <p className="flex justify-between">
+                        <span>Per Person (Avg):</span>
+                        <span className="text-white font-mono">
+                            {amount && count ? (parseFloat(amount) / parseInt(count)).toFixed(4) : "0"} {selectedCoin.symbol}
+                        </span>
+                    </p>
                 </div>
 
                 <Button 
                     type="submit" 
-                    disabled={loading || !coinId} 
+                    disabled={loading || !amount} 
                     className="w-full"
                     size="lg"
                 >
@@ -129,13 +209,12 @@ export const CreatePage: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
                     <div className="bg-slate-900 border border-slate-700 p-8 rounded-2xl max-w-sm w-full text-center">
                         <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Coins className="w-8 h-8 text-green-400" />
+                            <CheckCircle2 className="w-8 h-8 text-green-400" />
                         </div>
                         <h2 className="text-xl font-bold text-white mb-2">Success!</h2>
                         <p className="text-slate-400 mb-6">Your Red Envelopes have been created on-chain.</p>
                         <div className="flex gap-4">
-                            <Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">Close</Button>
-                            <Button onClick={() => navigate('/dashboard')} className="flex-1">View</Button>
+                             <Button variant="outline" onClick={() => {setShowModal(false); navigate('/dashboard');}} className="flex-1">View Dashboard</Button>
                         </div>
                     </div>
                 </div>
