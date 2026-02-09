@@ -1,0 +1,22 @@
+[package]
+name = "stable-gift-backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.7.5"
+tokio = { version = "1.37.0", features = ["full"] }
+sea-orm = { version = "1.0.0", features = ["sqlx-mysql", "runtime-tokio-rustls", "macros", "with-rust_decimal"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dotenvy = "0.15"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.11", features = ["json"] }
+chrono = { version = "0.4", features = ["serde"] }
+rust_decimal = "1.33"
+thiserror = "1.0"
+anyhow = "1.0"
+tokio-tungstenite = { version = "0.21", features = ["rustls-tls-native-roots"] }
+futures = "0.3"
+url = "2.5"
