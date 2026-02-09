@@ -3,7 +3,7 @@ name = "sui_red_envelope"
 version = "0.0.1"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "testnet-v1.53.2" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.53.2" }
 
 [addresses]
-sui_red_envelope = "0x0"
+sui_red_envelope = "0xebe76b184cca65aea2880b30101d1bae3325fbd4f86b91e2b53195949331093b"

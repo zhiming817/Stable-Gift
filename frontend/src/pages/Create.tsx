@@ -4,6 +4,7 @@ import { cn, Button } from '../components/ui';
 import { useContract } from '../hooks/useContract';
 import { useNavigate } from 'react-router-dom';
 import { Coins, Info } from 'lucide-react';
+import { PACKAGE_ID, NETWORK } from '../constants';
 
 export const CreatePage: React.FC = () => {
     const account = useCurrentAccount();
@@ -38,7 +39,7 @@ export const CreatePage: React.FC = () => {
             (err) => {
                 console.error(err);
                 setLoading(false);
-                alert("Transaction Failed");
+                alert(`Transaction Failed: ${err.message || "Unknown error"}`);
             }
         );
     };
@@ -47,6 +48,11 @@ export const CreatePage: React.FC = () => {
         <div className="pt-24 pb-12 px-4 max-w-lg mx-auto">
             <h1 className="text-3xl font-bold text-center mb-8 gradient-text">Create Red Envelope</h1>
             
+            <div className="mb-4 p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[10px] font-mono text-blue-400 text-center">
+                Current Network: <span className="font-bold uppercase">{NETWORK}</span> | 
+                Package: <span className="opacity-70">{PACKAGE_ID.slice(0, 10)}...</span>
+            </div>
+
             <form onSubmit={handleSubmit} className="glass-card p-6 rounded-2xl space-y-6">
                 
                 {/* Coin Selection */}

@@ -12,7 +12,17 @@
 *   **防重领**：确保每个地址只能领取一次。
 *   **资金回收**：合约拥有者可以回收未领取完的资金。
 
-## 2. 部署信息 (Sui Testnet)
+## 2. 部署信息
+
+### Sui Mainnet (当前生产环境)
+
+*   **Network**: Sui Mainnet
+*   **Package ID**: `0xebe76b184cca65aea2880b30101d1bae3325fbd4f86b91e2b53195949331093b`
+*   **Module Name**: `sui_red_envelope`
+*   **UpgradeCap ID**: `0xa7da2741706b9b399bd297521b3b1d64a8f48f224cb34eafe5f13391aab2b06c`
+*   **Deploy Transaction Digest**: `95WT6tb6tEjLN8q4RLkyX1fNZURPQr8SzaM1G33FPsCv`
+
+### Sui Testnet (开发测试环境)
 
 *   **Network**: Sui Testnet
 *   **Package ID**: `0x9a655891803026d290b40f3b2540915f71a137ddf1be4af2848baa8fd6c7e1be`
@@ -25,7 +35,7 @@
 ### 目录结构
 ```
 contract/
-├── Move.toml      # 依赖配置文件 (Sui Framework testnet-v1.53.2)
+├── Move.toml      # 依赖配置文件 (Sui Framework mainnet-v1.53.2 / testnet-v1.53.2)
 └── sources/
     └── sui_red_envelope.move  # 合约源码
 ```
@@ -43,7 +53,7 @@ sui client publish --gas-budget 50000000 --skip-dependency-verification
 
 ## 4. 合约测试流程 (CLI 演练)
 
-以下记录了在 Testnet 上进行的真实测试步骤。
+以下记录了在 Testnet 上进行的真实测试步骤。若要在主网上执行，请将相关 ID 替换为第二章中的主网信息。
 
 ### 步骤 1: 准备资金 (Split Coin)
 由于创建红包需要将一个 Coin 对象转入合约，我们先从主 Gas Coin 中拆分出一定金额 (例如 0.01 SUI)。

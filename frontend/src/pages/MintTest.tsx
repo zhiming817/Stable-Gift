@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { Transaction, coinWithBalance } from '@mysten/sui/transactions';
 import { StableLayerClient } from "stable-layer-sdk";
+import { NETWORK } from '../constants';
 import { Button } from '../components/ui';
 import { Loader2, Zap } from 'lucide-react';
 
@@ -26,7 +27,7 @@ export const MintTestPage: React.FC = () => {
 
         try {
             const client = new StableLayerClient({
-                network: "mainnet",
+                network: NETWORK as any,
                 sender: account.address,
             });
 

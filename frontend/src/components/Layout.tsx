@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ConnectButton } from '@mysten/dapp-kit';
-import { Gift, LayoutDashboard } from 'lucide-react';
+import { Gift, LayoutDashboard, Globe } from 'lucide-react';
+import { NETWORK, toggleNetwork } from '../constants';
 
 export const Header: React.FC = () => {
     return (
@@ -21,11 +22,22 @@ export const Header: React.FC = () => {
                     <Link to="/mint" className="text-cyan-400/80 hover:text-cyan-400 transition-colors font-medium border border-cyan-500/30 px-3 py-1 rounded-full text-xs">Mint Test</Link>
                 </nav>
 
-                <div className="flex items-center gap-4">
-                    <Link to="/dashboard" className="md:hidden text-slate-300">
-                        <LayoutDashboard className="w-6 h-6" />
-                    </Link>
-                    <ConnectButton className="!bg-slate-800 !text-white !font-medium" />
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={toggleNetwork}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-white/5 text-xs font-medium text-slate-300 transition-all"
+                        title="Click to switch network"
+                    >
+                        <Globe className="w-3.5 h-3.5 text-cyan-500" />
+                        <span className="uppercase tracking-wider">{NETWORK}</span>
+                    </button>
+
+                    <div className="flex items-center gap-4">
+                        <Link to="/dashboard" className="md:hidden text-slate-300">
+                            <LayoutDashboard className="w-6 h-6" />
+                        </Link>
+                        <ConnectButton className="!bg-slate-800 !text-white !font-medium" />
+                    </div>
                 </div>
             </div>
         </header>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSuiClientQuery } from '@mysten/dapp-kit';
 import { useCurrentAccount } from '@mysten/dapp-kit';
-import { PACKAGE_ID, MODULE_NAME } from '../constants';
+import { PACKAGE_ID, MODULE_NAME, NETWORK } from '../constants';
 
 export const Dashboard: React.FC = () => {
     const account = useCurrentAccount();
@@ -97,7 +97,7 @@ export const Dashboard: React.FC = () => {
                                     </td>
                                     <td className="p-4 text-cyan-500 truncate max-w-[100px]">
                                         {event.id?.txDigest ? (
-                                            <a href={`https://suiscan.xyz/testnet/tx/${event.id.txDigest}`} target="_blank" rel="noreferrer" className="hover:underline">
+                                            <a href={`https://suiscan.xyz/${NETWORK}/tx/${event.id.txDigest}`} target="_blank" rel="noreferrer" className="hover:underline">
                                                 {event.id.txDigest.slice(0, 8)}...
                                             </a>
                                         ) : 'N/A'}
