@@ -16,6 +16,7 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/create" element={<CreatePage />} />
                 <Route path="/claim" element={<ClaimPage />} />
+                <Route path="/claim/:id" element={<ClaimPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/mint" element={<MintTestPage />} />
             </Routes>

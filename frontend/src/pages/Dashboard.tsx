@@ -1,7 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useSuiClientQuery } from '@mysten/dapp-kit';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { PACKAGE_ID, MODULE_NAME, NETWORK } from '../constants';
+import { ArrowUpRight } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
     const account = useCurrentAccount();
@@ -117,16 +119,26 @@ export const Dashboard: React.FC = () => {
                                                 🎁 Created
                                             </span>
                                         </td>
-                                        <td className="p-4 font-mono text-slate-300 text-xs">
-                                            <button 
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(json.id || '');
-                                                    alert('ID Copied!');
-                                                }}
-                                                className="hover:text-cyan-400 transition-colors"
-                                            >
-                                                {json.id}
-                                            </button>
+                                        <td className="p-4 font-mono text-slate-300 text-xs shadow-sm">
+                                            <div className="flex items-center gap-2">
+                                                <button 
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(json.id || '');
+                                                        alert('ID Copied!');
+                                                    }}
+                                                    className="hover:text-cyan-400 transition-colors"
+                                                    title="Copy ID"
+                                                >
+                                                    {json.id}
+                                                </button>
+                                                <Link 
+                                                    to={`/claim/${json.id}`}
+                                                    className="p-1 hover:bg-slate-700 rounded-md text-cyan-500 transition-colors"
+                                                    title="Go to claim page"
+                                                >
+                                                    <ArrowUpRight className="w-3.5 h-3.5" />
+                                                </Link>
+                                            </div>
                                         </td>
                                         <td className="p-4 text-slate-300">
                                             Count: {json.count}

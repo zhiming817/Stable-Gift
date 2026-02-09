@@ -1,15 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useContract } from '../hooks/useContract';
 import { Button } from '../components/ui';
-import { Loader2, PartyPopper } from 'lucide-react';
+import { Loader2, PartyPopper, Gift, Info, ExternalLink } from 'lucide-react';
+import { useSuiClient } from '@mysten/dapp-kit';
+import { NETWORK } from '../constants';
 
 export const ClaimPage: React.FC = () => {
+    const { id: urlId } = useParams<{ id: string }>();
     const { claimEnvelope } = useContract();
+    const suiClient = useSuiClient();
     
     // States: 'idle' | 'claiming' | 'success'
     const [status, setStatus] = useState<'idle' | 'claiming' | 'success'>('idle');
-    const [id, setId] = useState('');
+    const [id, setId] = useState(urlId || '');
     const [error, setError] = useState<string | null>(null);
+    const [envelopeData, setEnvelopeData] = useState<any>(null);
+    const [isLoadingData, setIsLoadingData] = useState(false);
+
+    // Update ID if URL parameter changes
+    useEffect(() => {
+        if (urlId) setId(urlId);
+    }, [urlId]);
+
+    // Fetch envelope details when ID is entered
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!id || id.length < 64) {
+                setEnvelopeData(null);
+                return;
+            }
+            
+            setIsLoadingData(true);
+            setError(null);
+            try {
+                const res = await suiClient.getObject({
+                    id,
+                    options: { showContent: true, showType: true }
+                });
+
+                if (res.data?.content?.dataType === 'moveObject') {
+                    const fields = (res.data.content as any).fields;
+                    setEnvelopeData({
+                        totalAmount: fields.total_amount,
+                        remainingCount: fields.remaining_count,
+                        totalCount: fields.total_count,
+                        mode: fields.mode,
+                        balance: fields.balance,
+                        type: res.data.type
+                    });
+                } else {
+                    setEnvelopeData(null);
+                    if (id.startsWith('0x')) setError("Invalid red envelope ID");
+                }
+            } catch (e) {
+                console.error("Fetch error:", e);
+                setEnvelopeData(null);
+            } finally {
+                setIsLoadingData(false);
+            }
+        };
+
+        const timer = setTimeout(fetchData, 500); // Debounce
+        return () => clearTimeout(timer);
+    }, [id, suiClient]);
 
     const handleClaim = () => {
         if (!id) return;
@@ -54,6 +108,61 @@ export const ClaimPage: React.FC = () => {
                                 }}
                                 disabled={status === 'claiming'}
                             />
+
+                            {isLoadingData && (
+                                <div className="flex items-center justify-center py-2">
+                                    <Loader2 className="animate-spin w-4 h-4 text-cyan-400 mr-2" />
+                                    <span className="text-xs text-slate-500">Fetching envelope details...</span>
+                                </div>
+                            )}
+
+                            {envelopeData && (
+                                <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-slate-500">Status</span>
+                                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${Number(envelopeData.remainingCount) > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                            {Number(envelopeData.remainingCount) > 0 ? 'Active' : 'Empty'}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Remaining</p>
+                                            <p className="text-lg font-bold text-white">{envelopeData.remainingCount} <span className="text-xs text-slate-500">/ {envelopeData.totalCount}</span></p>
+                                        </div>
+                                        <div className="space-y-1 text-right">
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Distribution</p>
+                                            <p className="text-sm font-medium text-slate-300">
+                                                {envelopeData.mode === 0 ? '🎲 Random' : '⚖️ Equal Split'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Gift className="w-4 h-4 text-cyan-400" />
+                                            <span className="text-xs text-slate-400">Total Gift Value</span>
+                                        </div>
+                                        <span className="text-sm font-mono text-cyan-300 font-bold">{envelopeData.totalAmount}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                                        <span className="text-slate-600 italic">Asset Type</span>
+                                        {(() => {
+                                            const fullType = envelopeData.type.match(/<([^>]*)>/)?.[1] || "0x2::sui::SUI";
+                                            const shortName = fullType.split('::').pop();
+                                            return (
+                                                <a 
+                                                    href={`https://suiscan.xyz/${NETWORK}/coin/${fullType}/traders`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="text-cyan-500/60 hover:text-cyan-400 flex items-center gap-1 transition-colors font-mono"
+                                                >
+                                                    {shortName}
+                                                    <ExternalLink className="w-2.5 h-2.5" />
+                                                </a>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            )}
                             
                             {error && (
                                 <div className="text-red-400 text-xs bg-red-400/10 p-3 rounded-lg border border-red-400/20 italic">
@@ -63,7 +172,7 @@ export const ClaimPage: React.FC = () => {
 
                             <Button 
                                 onClick={handleClaim} 
-                                disabled={!id || status === 'claiming'} 
+                                disabled={!id || status === 'claiming' || (envelopeData && Number(envelopeData.remainingCount) === 0)} 
                                 className="w-full h-14 text-lg font-bold shadow-lg shadow-cyan-500/20"
                             >
                                 {status === 'claiming' ? (
@@ -71,9 +180,7 @@ export const ClaimPage: React.FC = () => {
                                         <Loader2 className="animate-spin w-5 h-5 mr-3" />
                                         Opening Gift...
                                     </>
-                                ) : (
-                                    'Claim Rewards'
-                                )}
+                                ) : (envelopeData && Number(envelopeData.remainingCount) === 0 ? 'Fully Claimed' : 'Claim Rewards')}
                             </Button>
                         </div>
                     </div>
