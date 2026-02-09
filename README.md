@@ -51,6 +51,8 @@
 - `claim_red_envelope(red_envelope)` - 领取红包
 - `reclaim_remaining(red_envelope)` - 回收剩余金额
 
+
+## 参考
 https://www.deepsurge.xyz/community/218e11e1-cde0-4401-8edf-61bc3636603d 
 
 https://docs.stablelayer.site/
