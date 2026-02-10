@@ -7,6 +7,9 @@ module sui_red_envelope::sui_red_envelope {
     use sui::table::{Self, Table};
     use sui::event;
     use sui::random::{Self, Random};
+    use sui::ed25519;
+    use sui::address;
+    use std::vector;
 
     /// Error codes
     const EZeroAmount: u64 = 0;
@@ -14,13 +17,42 @@ module sui_red_envelope::sui_red_envelope {
     const EEnvelopeEmpty: u64 = 2;
     const EAlreadyClaimed: u64 = 3;
     const ENotOwner: u64 = 4;
+    const EInvalidSignature: u64 = 5;
 
     /// Red Envelope Mode
     const MODE_RANDOM: u8 = 0;
     const MODE_EQUAL: u8 = 1;
 
+    /// Global Registry to store configuration
+    public struct Registry has key {
+        id: UID,
+        admin: address,
+        public_key: vector<u8>, // The verification server's public key
+    }
+
+    /// Admin capability
+    public struct AdminCap has key, store {
+        id: UID,
+    }
+
+    /// Events
+    public struct EnvelopeCreated<phantom T> has copy, drop {
+        id: ID,
+        owner: address,
+        amount: u64,
+        count: u64,
+        mode: u8,
+        requires_verification: bool,
+    }
+
+    public struct EnvelopeClaimed has copy, drop {
+        id: ID,
+        claimer: address,
+        amount: u64,
+    }
+
     /// The Red Envelope Object
-    struct RedEnvelope<phantom T> has key, store {
+    public struct RedEnvelope<phantom T> has key, store {
         id: UID,
         owner: address,
         balance: Balance<T>,
@@ -28,23 +60,27 @@ module sui_red_envelope::sui_red_envelope {
         remaining_count: u64,
         total_count: u64,
         mode: u8,
+        requires_verification: bool, // New field for task verification
         claimed_list: Table<address, bool>,
     }
 
-    /// Event emitted when a new Red Envelope is created
-    struct EnvelopeCreated has copy, drop {
-        id: ID,
-        owner: address,
-        amount: u64,
-        count: u64,
-        mode: u8,
+    fun init(ctx: &mut TxContext) {
+        let sender = tx_context::sender(ctx);
+        transfer::share_object(Registry {
+            id: object::new(ctx),
+            admin: sender,
+            public_key: b"placeholder_pubkey_replace_with_real_one",
+        });
+        transfer::transfer(AdminCap { id: object::new(ctx) }, sender);
     }
 
-    /// Event emitted when a Red Envelope is claimed
-    struct EnvelopeClaimed has copy, drop {
-        id: ID,
-        claimer: address,
-        amount: u64,
+    /// Update the trusted signer public key (Admin only)
+    public entry fun update_public_key(
+        _cap: &AdminCap,
+        registry: &mut Registry,
+        new_pk: vector<u8>,
+    ) {
+        registry.public_key = new_pk;
     }
 
     /// Create a new Red Envelope
@@ -52,6 +88,7 @@ module sui_red_envelope::sui_red_envelope {
         coin: Coin<T>,
         count: u64,
         mode: u8,
+        requires_verification: bool,
         ctx: &mut TxContext
     ) {
         let amount = coin::value(&coin);
@@ -70,36 +107,51 @@ module sui_red_envelope::sui_red_envelope {
             remaining_count: count,
             total_count: count,
             mode,
+            requires_verification,
             claimed_list: table::new(ctx),
         };
 
-        event::emit(EnvelopeCreated {
+        event::emit(EnvelopeCreated<T> {
             id: object::id(&envelope),
             owner: sender,
             amount,
             count,
             mode,
+            requires_verification,
         });
 
         transfer::share_object(envelope);
     }
 
     /// Claim a Red Envelope
-    /// For random mode, we use the `Random` object from Sui Framework
     entry fun claim_red_envelope<T>(
         envelope: &mut RedEnvelope<T>,
+        registry: &Registry, // Added Registry to get public key
         r: &Random,
+        signature: vector<u8>, // Added signature param
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
         
+        // Verification Logic
+        if (envelope.requires_verification) {
+            // Message structure: EnvelopeID (32 bytes) + Claimer Address (32 bytes)
+            let mut msg = object::id_bytes(envelope);
+            vector::append(&mut msg, sui::address::to_bytes(sender));
+            
+            assert!(
+                ed25519::ed25519_verify(&signature, &registry.public_key, &msg),
+                EInvalidSignature
+            );
+        };
+
         // Check if envelope is empty
         assert!(envelope.remaining_count > 0, EEnvelopeEmpty);
         
         // Check if already claimed
         assert!(!table::contains(&envelope.claimed_list, sender), EAlreadyClaimed);
 
-        let claim_amount;
+        let mut claim_amount;
         
         if (envelope.remaining_count == 1) {
             // Last one takes all remaining balance
@@ -114,12 +166,12 @@ module sui_red_envelope::sui_red_envelope {
             let remaining_balance = balance::value(&envelope.balance);
             let avg = remaining_balance / envelope.remaining_count;
             
-            let possible_max = avg * 2;
+            let mut possible_max = avg * 2;
             if (possible_max >= remaining_balance) { 
                 possible_max = remaining_balance - envelope.remaining_count + 1; 
             };
             
-            let generator = random::new_generator(r, ctx);
+            let mut generator = random::new_generator(r, ctx);
             claim_amount = random::generate_u64_in_range(&mut generator, 1, possible_max);
         };
 

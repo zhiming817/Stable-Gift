@@ -60,23 +60,16 @@
 
 ---
 
-### 2.3 红包回收/提现表 (`refunds`)
-
-记录红包发起者取回剩余金额的操作。
-*注意：当前合约 `withdraw_remaining` 函数尚未发出 Event，建议升级合约添加 `EnvelopeRefunded` 事件以便索引。若不升级合约，需解析 Transaction Effects 中的 Balance Change。*
+### 2.4 Discord 验证记录表 (`discord_users`)
 
 | 字段名 | 类型 | 描述 | 来源/备注 |
 | :--- | :--- | :--- | :--- |
-| `refund_id` | `VARCHAR(66)` | **主键**。交易哈希或 Event ID | System |
-| `envelope_id` | `VARCHAR(66)` | **外键**。关联红包 ID | 参数/Event |
-| `network` | `VARCHAR(20)` | 网络环境 | 配置注入 |
-| `owner` | `VARCHAR(66)` | 操作者（红包拥有者） | Sender |
-| `amount` | `NUMERIC(30,0)` | 回收金额 | Balance Change |
-| `refunded_at` | `TIMESTAMP` | 回收时间 | Transaction Timestamp |
-
----
-
-## 3. SQL 示例 (MySQL)
+| `id` | `BIGINT` | **主键**。自增 ID | System |
+| `envelope_id` | `VARCHAR(66)` | 红包 Object ID | - |
+| `network` | `VARCHAR(20)` | 网络环境 (mainnet/testnet) | **新增字段** |
+| `discord_user_id` | `VARCHAR(64)` | Discord 用户 ID | @me API |
+| `claimer_address` | `VARCHAR(66)` | 绑定的 Sui 地址 | Payload |
+| `claimed_at` | `TIMESTAMP` | 记录生成时间 | - |
 
 ```sql
 -- 创建数据库

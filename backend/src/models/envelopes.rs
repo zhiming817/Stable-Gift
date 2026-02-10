@@ -17,6 +17,7 @@ pub struct Model {
     pub mode: i16,
     pub remaining_count: i64,
     pub is_active: bool,
+    pub requires_verification: bool,
     pub created_at: DateTime,
     pub tx_digest: String,
 }

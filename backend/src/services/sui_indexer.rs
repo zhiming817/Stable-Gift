@@ -9,14 +9,14 @@ use futures::{SinkExt, StreamExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use url::Url;
 
-use crate::config::Config;
+use crate::config::NetworkConfig;
 use crate::models::{envelopes, claims};
 
-pub async fn start_indexer(db: DatabaseConnection, config: Config) {
-    let ws_url = config.sui_ws_url.clone();
-    let rpc_url = config.sui_rpc_url.clone();
-    let package_id = config.sui_package_id.clone();
-    let network = std::env::var("SUI_NETWORK").unwrap_or_else(|_| "testnet".to_string());
+pub async fn start_indexer(db: DatabaseConnection, config: NetworkConfig) {
+    let ws_url = config.ws_url.clone();
+    let rpc_url = config.rpc_url.clone();
+    let package_id = config.package_id.clone();
+    let network = config.name.clone();
 
     info!("Starting Sui WebIndexer for package: {} on network: {}", package_id, network);
 
@@ -143,12 +143,16 @@ async fn fetch_coin_type(rpc_url: &str, object_id: &str) -> String {
     match client.post(rpc_url).json(&query).send().await {
         Ok(res) => {
             if let Ok(json) = res.json::<serde_json::Value>().await {
-                if let Some(type_str) = json["result"]["data"]["type"].as_str() {
-                    // e.g. "0x...::module::Envelope<0x...::coin::COIN>"
-                    return type_str.split('<').nth(1)
-                        .map(|s| s.trim_end_matches('>'))
-                        .unwrap_or("Unknown")
-                        .to_string();
+                let type_str = json["result"]["data"]["type"].as_str()
+                    .or_else(|| json["result"]["type"].as_str());
+
+                if let Some(t) = type_str {
+                    // Use a more robust regex or loop to find the inner type
+                    // e.g. "0x...::RedEnvelope<0x...::SUI>" -> "0x...::SUI"
+                    // Find the first '<' and the last '>'
+                    if let (Some(start), Some(end)) = (t.find('<'), t.rfind('>')) {
+                        return t[start + 1..end].to_string();
+                    }
                 }
             }
         }
@@ -173,6 +177,8 @@ async fn process_created_event(db: &DatabaseConnection, network: &str, event: Su
     } else {
         mode_val.as_u64().unwrap_or(0) as i16
     };
+
+    let requires_verification = json["requires_verification"].as_bool().unwrap_or(false);
 
     let ts = event.timestamp_ms.as_deref().unwrap_or("0").parse::<i64>().unwrap_or(0);
 
@@ -207,6 +213,7 @@ async fn process_created_event(db: &DatabaseConnection, network: &str, event: Su
         mode: Set(mode_u8),
         remaining_count: Set(count_u64), // Initially full
         is_active: Set(true),
+        requires_verification: Set(requires_verification),
         created_at: Set(created_at),
         tx_digest: Set(event.id.tx_digest),
     };
@@ -268,8 +275,6 @@ async fn update_envelope_decrement(db: &DatabaseConnection, env_id: &str, networ
     // 3. Update
     // Note: This is racy without a proper transaction or atomic update logic, 
     // but acceptable for this demo.
-    
-    use crate::models::envelopes;
     
     // Using an update statement is safer for concurrency than read-modify-write in app
     // UPDATE envelopes SET remaining_count = remaining_count - 1 WHERE envelope_id = ... AND network = ...

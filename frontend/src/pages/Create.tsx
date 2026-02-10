@@ -16,7 +16,8 @@ export const CreatePage: React.FC = () => {
     const [selectedCoin, setSelectedCoin] = useState(COIN_OPTIONS[0]);
     const [amount, setAmount] = useState('');
     const [count, setCount] = useState('1');
-    const [mode, setMode] = useState<0 | 1>(0); // 0=Random, 1=Equal
+    const [mode, setMode] = useState<0 | 1>(0); // 0=Fixed, 1=Random
+    const [requiresVerification, setRequiresVerification] = useState(false);
     
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -70,6 +71,7 @@ export const CreatePage: React.FC = () => {
             rawAmount,
             parseInt(count),
             mode,
+            requiresVerification,
             (id) => {
                 setLoading(false);
                 setCreatedId(id);
@@ -153,24 +155,52 @@ export const CreatePage: React.FC = () => {
                             />
                         </div>
                          <div className="space-y-2">
-                            <label className="text-sm text-slate-400 font-medium">Mode</label>
+                            <label className="text-sm text-slate-400 font-medium">Distribution Mode</label>
                             <div className="flex bg-slate-900/50 p-1 rounded-lg h-12 border border-slate-700">
                                 <button 
                                     type="button"
-                                    onClick={() => setMode(0)}
-                                    className={cn("flex-1 rounded-md text-sm font-medium transition-all", mode === 0 ? "bg-cyan-500/20 text-cyan-300" : "text-slate-500")}
+                                    onClick={() => setMode(1)}
+                                    className={cn("flex-1 rounded-md text-sm font-medium transition-all", mode === 1 ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/50" : "text-slate-500")}
                                 >
                                     Random
                                 </button>
                                 <button 
                                     type="button"
-                                    onClick={() => setMode(1)}
-                                    className={cn("flex-1 rounded-md text-sm font-medium transition-all", mode === 1 ? "bg-cyan-500/20 text-cyan-300" : "text-slate-500")}
+                                    onClick={() => setMode(0)}
+                                    className={cn("flex-1 rounded-md text-sm font-medium transition-all", mode === 0 ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/50" : "text-slate-500")}
                                 >
                                     Equal
                                 </button>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Verification Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-500/10 rounded-lg">
+                                <svg className={cn("w-5 h-5", requiresVerification ? "text-indigo-400" : "text-slate-500")} fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037 19.736 19.736 0 0 0-4.885 1.515.069.069 0 0 0-.032.027C.533 9.048-.32 13.572.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.862-1.295 1.192-1.996a.076.076 0 0 0-.041-.106 13.11 13.11 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.29c.018-.014.04-.019.062-.014 3.931 1.8 8.19 1.8 12.062 0a.063.063 0 0 1 .063.014c.12.098.246.196.373.29a.077.077 0 0 1-.008.128 12.66 12.66 0 0 1-1.872.892.077.077 0 0 0-.041.107c.33.7.73 1.366 1.192 1.996a.077.077 0 0 0 .084.028 19.833 19.833 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div className="text-sm font-bold text-white">Discord Task</div>
+                                <div className="text-[10px] text-slate-500">Requires joining Discord to claim</div>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setRequiresVerification(!requiresVerification)}
+                            className={cn(
+                                "w-12 h-6 rounded-full relative transition-colors duration-200 ease-in-out focus:outline-none",
+                                requiresVerification ? "bg-indigo-600" : "bg-slate-700"
+                            )}
+                        >
+                            <div className={cn(
+                                "absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ease-in-out",
+                                requiresVerification ? "translate-x-6" : "translate-x-0"
+                            )} />
+                        </button>
                     </div>
                 </div>
 

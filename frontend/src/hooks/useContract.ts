@@ -1,6 +1,6 @@
 import { useSignAndExecuteTransaction, useSuiClient, useCurrentAccount } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
-import { PACKAGE_ID, MODULE_NAME, SUI_RANDOM_ID } from "../constants";
+import { PACKAGE_ID, MODULE_NAME, SUI_RANDOM_ID, REGISTRY_ID } from "../constants";
 
 export const useContract = () => {
     const { mutate: signAndExecute } = useSignAndExecuteTransaction();
@@ -11,7 +11,8 @@ export const useContract = () => {
         coinType: string,
         amount: bigint,
         count: number,
-        mode: number, // 0 = Random, 1 = Equal
+        mode: number, // 0 = Fixed, 1 = Random
+        requiresVerification: boolean,
         onSuccess: (digest: string) => void,
         onError: (err: any) => void
     ) => {
@@ -68,6 +69,7 @@ export const useContract = () => {
                     coinObject,
                     tx.pure.u64(BigInt(count)),
                     tx.pure.u8(Number(mode)),
+                    tx.pure.bool(requiresVerification),
                 ],
                 typeArguments: [coinType], 
             });
@@ -159,6 +161,7 @@ export const useContract = () => {
 
     const claimEnvelope = async (
         envelopeId: string,
+        signature: string | null,
         onSuccess: (digest: string) => void,
         onError: (err: any) => void
     ) => {
@@ -180,11 +183,18 @@ export const useContract = () => {
 
             const tx = new Transaction();
 
+            // Signature needs to be bytes - avoiding Buffer for browser compatibility
+            const sigBytes = signature 
+                ? Array.from(signature.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)))
+                : [];
+
             tx.moveCall({
                 target: `${PACKAGE_ID}::${MODULE_NAME}::claim_red_envelope`,
                 arguments: [
                     tx.object(envelopeId),
+                    tx.object(REGISTRY_ID),
                     tx.object(SUI_RANDOM_ID),
+                    tx.pure.vector('u8', sigBytes),
                 ],
                 typeArguments: [coinType],
             });

@@ -11,10 +11,10 @@ export const Dashboard: React.FC = () => {
     const [view, setView] = React.useState<'created' | 'claimed'>('created');
 
     const { data: envelopes, isPending, error } = useQuery({
-        queryKey: ['envelopes', view, account?.address],
+        queryKey: ['envelopes', view, account?.address, NETWORK],
         queryFn: async () => {
             const endpoint = view === 'created' ? 'created' : 'claimed';
-            const res = await fetch(`${BACKEND_URL}/api/envelopes/${endpoint}?address=${account?.address}`);
+            const res = await fetch(`${BACKEND_URL}/api/envelopes/${endpoint}?address=${account?.address}&network=${NETWORK}`);
             if (!res.ok) throw new Error('Failed to fetch data');
             return res.json();
         },
