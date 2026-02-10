@@ -10,6 +10,7 @@ const PACKAGE_IDS = {
 export const PACKAGE_ID = NETWORK === "mainnet" ? PACKAGE_IDS.mainnet : PACKAGE_IDS.testnet;
 export const MODULE_NAME = "sui_red_envelope";
 export const SUI_RANDOM_ID = "0x8"; // System Random Object
+export const BACKEND_URL = "http://127.0.0.1:3000"; // Assuming default backend port
 
 // Coin Constants
 export interface CoinConfig {

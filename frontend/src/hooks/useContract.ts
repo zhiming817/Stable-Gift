@@ -77,7 +77,77 @@ export const useContract = () => {
                     transaction: tx,
                 },
                 {
-                    onSuccess: (result) => onSuccess(result.digest),
+                    onSuccess: async (result) => {
+                         console.log("Transaction executed, digest:", result);
+                        console.log("Transaction executed, digest:", result.digest);
+                        try {
+                            // Manual polling for transaction results
+                            let response = null;
+                            console.log("Starting poll for transaction results...");
+                            
+                            for (let i = 0; i < 10; i++) {
+                                try {
+                                    response = await suiClient.getTransactionBlock({
+                                        digest: result.digest,
+                                        options: {
+                                            showEvents: true,
+                                            showObjectChanges: true,
+                                            showEffects: true,
+                                        }
+                                    });
+                                    
+                                    // Check if we have the data we need (events or object changes)
+                                    if (response && (
+                                        (response.events && response.events.length > 0) || 
+                                        (response.objectChanges && response.objectChanges.length > 0)
+                                    )) {
+                                        console.log(`Poll attempt ${i + 1} successful:`, response);
+                                        break;
+                                    }
+                                } catch (err) {
+                                    console.log(`Poll attempt ${i + 1} failed, retrying...`);
+                                }
+                                await new Promise(r => setTimeout(r, 2000));
+                            }
+
+                            if (!response) {
+                                console.warn("Poll finished without finding detailed results, using digest.");
+                                onSuccess(result.digest);
+                                return;
+                            }
+
+                            // 1. Extract RedEnvelope ID from events (Best)
+                            const createdEvent = response.events?.find(
+                                (e: any) => e.type.includes('::EnvelopeCreated')
+                            );
+                            
+                            if (createdEvent && createdEvent.parsedJson) {
+                                const eventData = createdEvent.parsedJson as any;
+                                console.log("Found EnvelopeCreated event:", eventData);
+                                if (eventData.id) {
+                                    onSuccess(eventData.id);
+                                    return;
+                                }
+                            }
+
+                            // 2. Extract from Object Changes (Fallback)
+                            const createdObject = response.objectChanges?.find(
+                                (oc: any) => oc.type === 'created' && oc.objectType.includes('::RedEnvelope')
+                            );
+                            
+                            if (createdObject && 'objectId' in createdObject) {
+                                console.log("Found RedEnvelope in objectChanges:", createdObject.objectId);
+                                onSuccess(createdObject.objectId);
+                                return;
+                            }
+
+                            // 3. Final fallback
+                            onSuccess(result.digest);
+                        } catch (e) {
+                            console.error("Error in transaction resolution:", e);
+                            onSuccess(result.digest);
+                        }
+                    },
                     onError,
                 }
             );

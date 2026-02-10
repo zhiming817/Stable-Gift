@@ -4,7 +4,8 @@ import { useContract } from '../hooks/useContract';
 import { Button } from '../components/ui';
 import { Loader2, PartyPopper, Gift, Info, ExternalLink } from 'lucide-react';
 import { useSuiClient } from '@mysten/dapp-kit';
-import { NETWORK, getCoinConfig, formatAmount } from '../constants';
+import { NETWORK, getCoinConfig, formatAmount, BACKEND_URL } from '../constants';
+import { useQuery } from '@tanstack/react-query';
 
 export const ClaimPage: React.FC = () => {
     const { id: urlId } = useParams<{ id: string }>();
@@ -15,55 +16,26 @@ export const ClaimPage: React.FC = () => {
     const [status, setStatus] = useState<'idle' | 'claiming' | 'success'>('idle');
     const [id, setId] = useState(urlId || '');
     const [error, setError] = useState<string | null>(null);
-    const [envelopeData, setEnvelopeData] = useState<any>(null);
-    const [isLoadingData, setIsLoadingData] = useState(false);
 
     // Update ID if URL parameter changes
     useEffect(() => {
         if (urlId) setId(urlId);
     }, [urlId]);
 
-    // Fetch envelope details when ID is entered
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!id || id.length < 64) {
-                setEnvelopeData(null);
-                return;
-            }
-            
-            setIsLoadingData(true);
-            setError(null);
-            try {
-                const res = await suiClient.getObject({
-                    id,
-                    options: { showContent: true, showType: true }
-                });
+    // Fetch envelope details from Backend
+    const { data: detail, isPending: isLoadingData, refetch } = useQuery({
+        queryKey: ['envelope', id],
+        queryFn: async () => {
+            if (!id || id.length < 10) return null;
+            const res = await fetch(`${BACKEND_URL}/api/envelopes/${id}`);
+            if (!res.ok) throw new Error('Envelope not found');
+            return res.json();
+        },
+        enabled: !!id,
+    });
 
-                if (res.data?.content?.dataType === 'moveObject') {
-                    const fields = (res.data.content as any).fields;
-                    setEnvelopeData({
-                        totalAmount: fields.total_amount,
-                        remainingCount: fields.remaining_count,
-                        totalCount: fields.total_count,
-                        mode: fields.mode,
-                        balance: fields.balance,
-                        type: res.data.type
-                    });
-                } else {
-                    setEnvelopeData(null);
-                    if (id.startsWith('0x')) setError("Invalid red envelope ID");
-                }
-            } catch (e) {
-                console.error("Fetch error:", e);
-                setEnvelopeData(null);
-            } finally {
-                setIsLoadingData(false);
-            }
-        };
-
-        const timer = setTimeout(fetchData, 500); // Debounce
-        return () => clearTimeout(timer);
-    }, [id, suiClient]);
+    const envelopeData = detail?.envelope;
+    const claims = detail?.claims || [];
 
     const handleClaim = () => {
         if (!id) return;
@@ -74,6 +46,7 @@ export const ClaimPage: React.FC = () => {
             id,
             () => {
                 setStatus('success');
+                refetch();
             },
             (err) => {
                 console.error(err);
@@ -127,7 +100,7 @@ export const ClaimPage: React.FC = () => {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
                                             <p className="text-[10px] text-slate-500 uppercase tracking-wider">Remaining</p>
-                                            <p className="text-lg font-bold text-white">{envelopeData.remainingCount} <span className="text-xs text-slate-500">/ {envelopeData.totalCount}</span></p>
+                                            <p className="text-lg font-bold text-white">{envelopeData.remaining_count} <span className="text-xs text-slate-500">/ {envelopeData.total_count}</span></p>
                                         </div>
                                         <div className="space-y-1 text-right">
                                             <p className="text-[10px] text-slate-500 uppercase tracking-wider">Distribution</p>
@@ -142,8 +115,8 @@ export const ClaimPage: React.FC = () => {
                                             <span className="text-xs text-slate-400">Total Gift Value</span>
                                         </div>
                                         {(() => {
-                                            const config = getCoinConfig(envelopeData.type);
-                                            const amount = formatAmount(envelopeData.totalAmount, config?.decimals || 9);
+                                            const config = getCoinConfig(envelopeData.coin_type);
+                                            const amount = formatAmount(envelopeData.total_amount, config?.decimals || 9);
                                             const symbol = config?.symbol || "Unknown";
                                             return (
                                                 <span className="text-sm font-mono text-cyan-300 font-bold">
@@ -155,8 +128,8 @@ export const ClaimPage: React.FC = () => {
                                     <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
                                         <span className="text-slate-600 italic">Asset Type</span>
                                         {(() => {
-                                            const config = getCoinConfig(envelopeData.type);
-                                            const fullType = envelopeData.type.match(/<([^>]*)>/)?.[1] || "0x2::sui::SUI";
+                                            const config = getCoinConfig(envelopeData.coin_type);
+                                            const fullType = envelopeData.coin_type;
                                             const shortName = config?.symbol || fullType.split('::').pop();
                                             return (
                                                 <a 
@@ -182,7 +155,7 @@ export const ClaimPage: React.FC = () => {
 
                             <Button 
                                 onClick={handleClaim} 
-                                disabled={!id || status === 'claiming' || (envelopeData && Number(envelopeData.remainingCount) === 0)} 
+                                disabled={!id || status === 'claiming' || (envelopeData && Number(envelopeData.remaining_count) === 0)} 
                                 className="w-full h-14 text-lg font-bold shadow-lg shadow-cyan-500/20"
                             >
                                 {status === 'claiming' ? (
@@ -190,8 +163,36 @@ export const ClaimPage: React.FC = () => {
                                         <Loader2 className="animate-spin w-5 h-5 mr-3" />
                                         Opening Gift...
                                     </>
-                                ) : (envelopeData && Number(envelopeData.remainingCount) === 0 ? 'Fully Claimed' : 'Claim Rewards')}
+                                ) : (envelopeData && Number(envelopeData.remaining_count) === 0 ? 'Fully Claimed' : 'Claim Rewards')}
                             </Button>
+
+                            {/* Claim History */}
+                            {claims.length > 0 && (
+                                <div className="mt-8 pt-8 border-t border-slate-700/50">
+                                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <Gift className="w-3 h-3" />
+                                        Claim History
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {claims.map((claim: any, idx: number) => {
+                                             const config = getCoinConfig(envelopeData.coin_type);
+                                             const symbol = config?.symbol || "???";
+                                             const decimals = config?.decimals || 9;
+                                             return (
+                                                <div key={idx} className="flex justify-between items-center bg-slate-900/40 p-3 rounded-xl border border-white/5">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-mono text-slate-300">{claim.claimer.slice(0, 10)}...</span>
+                                                        <span className="text-[9px] text-slate-600">{new Date(claim.claimed_at).toLocaleString()}</span>
+                                                    </div>
+                                                    <span className="text-green-400 font-mono text-xs">
+                                                        +{formatAmount(claim.amount, decimals)} {symbol}
+                                                    </span>
+                                                </div>
+                                             );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ) : (

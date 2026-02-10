@@ -3,7 +3,7 @@ import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit';
 import { cn, Button } from '../components/ui';
 import { useContract } from '../hooks/useContract';
 import { useNavigate } from 'react-router-dom';
-import { Coins, Info, CheckCircle2 } from 'lucide-react';
+import { Coins, Info, CheckCircle2, Copy } from 'lucide-react';
 import { PACKAGE_ID, NETWORK, COIN_OPTIONS } from '../constants';
 
 export const CreatePage: React.FC = () => {
@@ -20,6 +20,7 @@ export const CreatePage: React.FC = () => {
     
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
+    const [createdId, setCreatedId] = useState<string | null>(null);
     const [balance, setBalance] = useState<bigint>(0n);
     const [checkingBalance, setCheckingBalance] = useState(false);
 
@@ -69,8 +70,9 @@ export const CreatePage: React.FC = () => {
             rawAmount,
             parseInt(count),
             mode,
-            () => {
+            (id) => {
                 setLoading(false);
+                setCreatedId(id);
                 setShowModal(true); 
             },
             (err) => {
@@ -213,6 +215,31 @@ export const CreatePage: React.FC = () => {
                         </div>
                         <h2 className="text-xl font-bold text-white mb-2">Success!</h2>
                         <p className="text-slate-400 mb-6">Your Red Envelopes have been created on-chain.</p>
+                        
+                        {createdId && (
+                            <div className="mb-6 p-4 bg-slate-900 border border-slate-700 rounded-xl text-left">
+                                <label className="text-[10px] uppercase font-bold text-slate-500 mb-2 block">Shareable Claim Link</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text"
+                                        readOnly
+                                        value={`${window.location.origin}/claim/${createdId}`}
+                                        className="flex-1 bg-black/40 border border-slate-700 rounded-md px-3 py-2 text-xs font-mono text-cyan-400 outline-none"
+                                    />
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`${window.location.origin}/claim/${createdId}`);
+                                            alert("Link copied!");
+                                        }}
+                                        className="p-2 bg-slate-800 hover:bg-slate-700 rounded-md text-cyan-400 transition-colors"
+                                        title="Copy Link"
+                                    >
+                                        <Copy className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex gap-4">
                              <Button variant="outline" onClick={() => {setShowModal(false); navigate('/dashboard');}} className="flex-1">View Dashboard</Button>
                         </div>
