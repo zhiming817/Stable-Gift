@@ -1,7 +1,8 @@
 use sea_orm::entity::prelude::*;
 use rust_decimal::Decimal;
+use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize)]
 #[sea_orm(table_name = "claims")]
 pub struct Model {
     #[sea_orm(primary_key)]

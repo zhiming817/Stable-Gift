@@ -5,6 +5,7 @@ mod services;
 mod controllers;
 
 use axum::{routing::get, Router};
+use tower_http::cors::{Any, CorsLayer};
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -26,10 +27,20 @@ async fn main() {
     // Start Indexer
     services::sui_indexer::start_indexer(db.clone(), config.clone()).await;
 
+    // CORS
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     // Web Server
     let app = Router::new()
         .route("/", get(root))
         .route("/health", get(health))
+        .route("/api/envelopes/created", get(controllers::envelopes::list_created))
+        .route("/api/envelopes/claimed", get(controllers::envelopes::list_claimed))
+        .route("/api/envelopes/:id", get(controllers::envelopes::get_details))
+        .layer(cors)
         .with_state(db);
 
     let addr_str = format!("{}:{}", config.server_host, config.server_port);

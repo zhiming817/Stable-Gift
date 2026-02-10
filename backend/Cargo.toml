@@ -20,3 +20,4 @@ anyhow = "1.0"
 tokio-tungstenite = { version = "0.21", features = ["rustls-tls-native-roots"] }
 futures = "0.3"
 url = "2.5"
+tower-http = { version = "0.6.8", features = ["cors"] }
