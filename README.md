@@ -1,70 +1,69 @@
-# 可编程 RWA 礼品卡/红包/支票 (VibeCheck Stable-Gift)
-## 核心逻辑： 
-利用 Stablelayer 的 SDK 发行一种“带条件的”稳定币红包/支票。
+# VibeCheck Stable-Gift: Programmable RWA Gift Cards / Red Envelopes
 
-## 产品概述：
+A decentralized platform for creating and claiming "conditional" stablecoin gift cards (Red Envelopes) powered by Sui Network and the Stablelayer SDK.
 
-用户可以生成一张价值 100 USDC 的“红包/支票”。
+## 🚀 Core Concept
 
-验证： 领奖人必须完成某个  任务。
+Users can create a stablecoin gift (e.g., 100 USDC) with specific conditions. Recipients must complete a task (e.g., verifying Discord membership) to unlock the funds. Once verified, the contract releases the stablecoins directly to the recipient's wallet.
 
-一旦 验证通过，合约通过 Stablelayer SDK 释放稳定币。
+## 💡 Key Features
 
-## 💡 功能特性
+### Smart Contract (Move)
+- ✅ **Envelope Creation**: Supports both `Random` and `Equal` distribution modes.
+- ✅ **Secure Claiming**: Off-chain verification via Ed25519 signatures from the backend.
+- ✅ **Asset Transparency**: Optimized event generics to ensure accurate tracking of asset types (USDC, USDT, SUI).
+- ✅ **Multi-Network Compatibility**: Designed to run seamlessly on both Sui Mainnet and Testnet.
 
-### 智能合约功能
-- ✅ 创建红包（支持随机分配和平均分配）
-- ✅ 领取红包（支持后端签名验证机制）
-- ✅ 链上资产元数据优化（支持泛型事件追踪）
-- ✅ 完善的权限控制和多网络兼容
-- ✅ 多币种支持（USDC/USDT/SUI 等）
+### Backend (Rust Indexer & Signer)
+- 🌐 **Dual-Network Indexing**: A single backend instance monitors both Mainnet and Testnet events via WebSockets.
+- 🤖 **Discord Integration**: Automated task verification using Discord OAuth2 (membership check).
+- 🔑 **Cryptographic Signing**: Securely generates claim authorizations for legitimate users.
 
-### 前端功能
-- 🧧 **创建**: 设置金额、数量、分配模式
-- 🧭 **发现 (Explore)**: 全新发现页面，实时展示所有待领取的红包
-- 🎁 **领取**: 自动处理 Discord 任务验证，支持"加入服务器"跳转引导
-- 🛠️ **管理**: 个人活动面板，区分已创建和已领取的任务
-- 💼 **钱包集成**: Sui Dapp Kit 深度集成
-- 🌐 **多网络**: 支持 Mainnet 与 Testnet 一键切换
+### Frontend (React)
+- 🧧 **Create**: intuitive UI for setting amounts, counts, and distribution logic.
+- 🧭 **Explore**: A discovery hub to browse all currently available gifts.
+- 📊 **Dashboard**: Personal activity tracker for created and claimed envelopes.
+- 🔌 **Wallet Integration**: Deep integration with `@mysten/dapp-kit`.
+- 🔄 **Network Switcher**: Seamless one-click toggle between Mainnet and Testnet.
 
-## 🔧 技术栈
+## 🛠 Tech Stack
 
-### 智能合约
-- **语言**: Move (Sui)
-- **核心**: 共享对象 (Shared Objects) + 随机模块 (Random Module)
-- **网络**: Mainnet & Testnet
+- **Smart Contract**: Sui Move (Shared Objects, Random Module)
+- **Backend**: Rust (Axum, SeaORM, Tokio, Reqwest)
+- **Frontend**: React + Vite, TypeScript, TanStack Query, Tailwind CSS, Lucide Icons
+- **Integrations**: Stablelayer SDK, Discord API
 
-### 后端 (Indexer & Signer)
-- **语言**: Rust (Axum, SeaORM, Tokyos)
-- **功能**: 
-    - 双网络事件索引系统
-    - Discord OAuth2 任务验证
-    - Ed25519 离线签名发放
+## 📝 Contract Information
 
-### 前端
-- **框架**: React + Vite + TypeScript
-- **状态管理**: TanStack Query
-- **UI**: Tailwind CSS + Lucide Icons + Framer Motion
-
-## 📝 合约信息
-
-### Mainnet (主网)
+### Mainnet
 - **Package ID**: `0x5f9f7d072cce5dd066546b2923b31f8cb7677e28ee0d1126e0a9b4fc4056b79f`
 - **Registry ID**: `0x41b378e340fb32caa3efeeb770a8e3a762079cf76ee793ac0fb09eebef1edd36`
 
-### Testnet (测试网)
+### Testnet
 - **Package ID**: `0x54a63e2936cbd39450fcf9ca908dcb8134447430ddc8f01734af9374e5d29616`
 - **Registry ID**: `0x878b84d4e82460018bfe5d86a6de12e9178a7012f8642ee3fb8939b3607c9ffa`
 
-### 主要函数
-- `create_red_envelope(payment, count, mode)` - 创建红包
-- `claim_red_envelope(red_envelope)` - 领取红包
-- `reclaim_remaining(red_envelope)` - 回收剩余金额
+## 🏃 Getting Started
 
+### 1. Prerequisites
+- [Sui CLI](https://docs.sui.io/devnet/build/install) installed.
+- [Rust](https://www.rust-lang.org/tools/install) and [Node.js](https://nodejs.org/) environments.
+- A MySQL database.
 
-## 参考
-https://www.deepsurge.xyz/community/218e11e1-cde0-4401-8edf-61bc3636603d 
+### 2. Backend Setup
+```bash
+cd backend
+cp .env.example .env # Configure your database and Discord credentials
+cargo run --bin stable-gift-backend
+```
 
-https://docs.stablelayer.site/
+### 3. Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-https://github.com/StableLayer/stable-layer-sdk
+## 🔗 References
+- [Stablelayer Documentation](https://docs.stablelayer.site/)
+- [Stablelayer SDK](https://github.com/StableLayer/stable-layer-sdk)
