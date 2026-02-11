@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use ed25519_dalek::{SigningKey, Signer};
 use std::env;
 use hex;
+use crate::AppState;
 use crate::models::discord_users;
 use chrono::Utc;
 
@@ -34,7 +35,7 @@ fn error_json(status: StatusCode, msg: &str) -> (StatusCode, Json<JsonError>) {
 }
 
 pub async fn verify_discord(
-    State(db): State<DatabaseConnection>,
+    State(state): State<AppState>,
     Json(payload): Json<VerificationRequest>,
 ) -> Result<Json<VerificationResponse>, (StatusCode, Json<JsonError>)> {
     let client = reqwest::Client::new();
@@ -65,7 +66,7 @@ pub async fn verify_discord(
         .filter(discord_users::Column::EnvelopeId.eq(&payload.envelope_id))
         .filter(discord_users::Column::Network.eq(&payload.network))
         .filter(discord_users::Column::DiscordUserId.eq(&discord_user_id))
-        .one(&db)
+        .one(&state.db)
         .await
         .map_err(|e| error_json(StatusCode::INTERNAL_SERVER_ERROR, &format!("DB Error: {}", e)))?;
 
@@ -107,7 +108,7 @@ pub async fn verify_discord(
         ..Default::default()
     };
 
-    new_user_record.insert(&db).await
+    new_user_record.insert(&state.db).await
         .map_err(|e| error_json(StatusCode::INTERNAL_SERVER_ERROR, &format!("Failed to record claim: {}", e)))?;
 
     // 5. Generate Signature

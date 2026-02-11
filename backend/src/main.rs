@@ -9,6 +9,12 @@ use tower_http::cors::{Any, CorsLayer};
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+#[derive(Clone)]
+pub struct AppState {
+    pub db: sea_orm::DatabaseConnection,
+    pub config: config::Config,
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
@@ -29,6 +35,11 @@ async fn main() {
         services::sui_indexer::start_indexer(db.clone(), network_config).await;
     }
 
+    let state = AppState {
+        db,
+        config: config.clone(),
+    };
+
     // CORS
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -42,17 +53,18 @@ async fn main() {
         .route("/api/envelopes/active", get(controllers::envelopes::list_active))
         .route("/api/envelopes/created", get(controllers::envelopes::list_created))
         .route("/api/envelopes/claimed", get(controllers::envelopes::list_claimed))
+        .route("/api/envelopes/sync/:id", post(controllers::envelopes::sync_envelope))
         .route("/api/envelopes/:id", get(controllers::envelopes::get_details))
         .route("/api/verify-discord", post(controllers::verification::verify_discord))
         .layer(cors)
-        .with_state(db);
+        .with_state(state);
 
     let addr_str = format!("{}:{}", config.server_host, config.server_port);
     let addr: SocketAddr = addr_str.parse().expect("Invalid address");
 
     tracing::info!("Listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app.into_make_service()).await.unwrap();
 }
 
 async fn root() -> &'static str {

@@ -5,7 +5,10 @@ use axum::{
 };
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use crate::AppState;
 use crate::models::{envelopes, claims};
+use crate::services::sui_indexer;
 
 #[derive(Deserialize)]
 pub struct GeneralQuery {
@@ -26,7 +29,7 @@ pub struct EnvelopeDetail {
 }
 
 pub async fn list_created(
-    State(db): State<DatabaseConnection>,
+    State(state): State<AppState>,
     Query(query): Query<GeneralQuery>,
 ) -> Result<Json<Vec<envelopes::Model>>, (StatusCode, String)> {
     let mut find = envelopes::Entity::find();
@@ -41,7 +44,7 @@ pub async fn list_created(
 
     let envelopes = find
         .order_by_desc(envelopes::Column::CreatedAt)
-        .all(&db)
+        .all(&state.db)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -49,7 +52,7 @@ pub async fn list_created(
 }
 
 pub async fn list_active(
-    State(db): State<DatabaseConnection>,
+    State(state): State<AppState>,
     Query(query): Query<GeneralQuery>,
 ) -> Result<Json<Vec<envelopes::Model>>, (StatusCode, String)> {
     let mut find = envelopes::Entity::find()
@@ -62,7 +65,7 @@ pub async fn list_active(
 
     let envelopes = find
         .order_by_desc(envelopes::Column::CreatedAt)
-        .all(&db)
+        .all(&state.db)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -70,7 +73,7 @@ pub async fn list_active(
 }
 
 pub async fn list_claimed(
-    State(db): State<DatabaseConnection>,
+    State(state): State<AppState>,
     Query(query): Query<GeneralQuery>,
 ) -> Result<Json<Vec<EnvelopeWithClaim>>, (StatusCode, String)> {
     let mut find = envelopes::Entity::find()
@@ -86,7 +89,7 @@ pub async fn list_claimed(
 
     let claimed = find
         .order_by_desc(claims::Column::ClaimedAt)
-        .all(&db)
+        .all(&state.db)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -98,7 +101,7 @@ pub async fn list_claimed(
 }
 
 pub async fn get_details(
-    State(db): State<DatabaseConnection>,
+    State(state): State<AppState>,
     Path(id): Path<String>,
     Query(query): Query<GeneralQuery>,
 ) -> Result<Json<EnvelopeDetail>, (StatusCode, String)> {
@@ -110,7 +113,7 @@ pub async fn get_details(
     }
 
     let envelope = find
-        .one(&db)
+        .one(&state.db)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::NOT_FOUND, "Envelope not found".to_string()))?;
@@ -124,7 +127,7 @@ pub async fn get_details(
 
     let claims = find_claims
         .order_by_desc(claims::Column::ClaimedAt)
-        .all(&db)
+        .all(&state.db)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -132,4 +135,23 @@ pub async fn get_details(
         envelope,
         claims,
     }))
+}
+
+pub async fn sync_envelope(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Query(query): Query<GeneralQuery>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let network = query.network.unwrap_or_else(|| "testnet".to_string());
+    
+    // Find RPC URL for the network
+    let network_conf = state.config.networks.iter()
+        .find(|n| n.name == network)
+        .ok_or((StatusCode::BAD_REQUEST, format!("Network {} not configured", network)))?;
+
+    sui_indexer::sync_envelope_by_id(&state.db, &network, &network_conf.rpc_url, &id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(json!({ "status": "success", "message": "Envelope synced" })))
 }

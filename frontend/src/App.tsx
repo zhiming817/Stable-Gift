@@ -4,6 +4,7 @@ import { Home } from './pages/Home';
 import { CreatePage } from './pages/Create';
 import { ClaimPage } from './pages/Claim';
 import { ExplorePage } from './pages/Explore';
+import { SyncPage } from './pages/Sync';
 import { Dashboard } from './pages/Dashboard';
 import { MintTestPage } from './pages/MintTest';
 
@@ -17,6 +18,7 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/create" element={<CreatePage />} />
                 <Route path="/explore" element={<ExplorePage />} />
+                <Route path="/sync" element={<SyncPage />} />
                 <Route path="/claim" element={<ClaimPage />} />
                 <Route path="/claim/:id" element={<ClaimPage />} />
                 <Route path="/claim-callback" element={<ClaimPage />} />
