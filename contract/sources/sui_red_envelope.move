@@ -198,6 +198,9 @@ module sui_red_envelope::sui_red_envelope {
     ) {
         let sender = tx_context::sender(ctx);
         assert!(sender == envelope.owner, ENotOwner);
+
+        // Set remaining_count to 0 to stop further claims
+        envelope.remaining_count = 0;
         
         let value = balance::value(&envelope.balance);
         if (value > 0) {

@@ -36,12 +36,12 @@ Users can create a stablecoin gift (e.g., 100 USDC) with specific conditions. Re
 ## 📝 Contract Information
 
 ### Mainnet
-- **Package ID**: `0x5f9f7d072cce5dd066546b2923b31f8cb7677e28ee0d1126e0a9b4fc4056b79f`
-- **Registry ID**: `0x41b378e340fb32caa3efeeb770a8e3a762079cf76ee793ac0fb09eebef1edd36`
+- **Package ID**: `0x24b251de24a7beb2b327d97a5b35229d3dc12b7a3e1d68d37362c11c9ca7ba0b`
+- **Registry ID**: `0xad0732712a9fe142d18e8b8216ca7473bb98ee912db0ed0fb2f0158dcedb7e4a`
 
 ### Testnet
-- **Package ID**: `0x54a63e2936cbd39450fcf9ca908dcb8134447430ddc8f01734af9374e5d29616`
-- **Registry ID**: `0x878b84d4e82460018bfe5d86a6de12e9178a7012f8642ee3fb8939b3607c9ffa`
+- **Package ID**: `0xb972ae82075bad34d6d7391be513e690c7f84be23a83f9c47bbf3a666df265c0`
+- **Registry ID**: `0x93929ac3ae1a2f4fcc188ae3f4232d2ad658ee88df83bde4ba46d8c983da3adb`
 
 ## 🏃 Getting Started
 
