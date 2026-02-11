@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { PartyPopper, Gift, Loader2, Disc as Discord } from 'lucide-react';
+import { Gift, Loader2, Disc as Discord } from 'lucide-react';
 import { BACKEND_URL, getCoinConfig, formatAmount, NETWORK } from '../constants';
 
 export const ExplorePage: React.FC = () => {

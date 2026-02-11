@@ -23,35 +23,40 @@ impl Config {
 
         let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
         let server_host = env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let active_network = env::var("ACTIVE_NETWORK").unwrap_or_else(|_| "all".to_string());
         
         let mut networks = Vec::new();
 
         // Testnet
-        if let Ok(rpc) = env::var("TESTNET_RPC_URL") {
-            networks.push(NetworkConfig {
-                name: "testnet".to_string(),
-                rpc_url: rpc,
-                ws_url: env::var("TESTNET_WS_URL").expect("TESTNET_WS_URL must be set"),
-                package_id: env::var("TESTNET_PACKAGE_ID").expect("TESTNET_PACKAGE_ID must be set"),
-            });
-        } else if let Ok(rpc) = env::var("SUI_RPC_URL") {
-            // Backward compatibility
-            networks.push(NetworkConfig {
-                name: "testnet".to_string(),
-                rpc_url: rpc,
-                ws_url: env::var("SUI_WS_URL").expect("SUI_WS_URL must be set"),
-                package_id: env::var("SUI_PACKAGE_ID").expect("SUI_PACKAGE_ID must be set"),
-            });
+        if (active_network == "all" || active_network == "testnet") {
+            if let Ok(rpc) = env::var("TESTNET_RPC_URL") {
+                networks.push(NetworkConfig {
+                    name: "testnet".to_string(),
+                    rpc_url: rpc,
+                    ws_url: env::var("TESTNET_WS_URL").expect("TESTNET_WS_URL must be set"),
+                    package_id: env::var("TESTNET_PACKAGE_ID").expect("TESTNET_PACKAGE_ID must be set"),
+                });
+            } else if let Ok(rpc) = env::var("SUI_RPC_URL") {
+                // Backward compatibility
+                networks.push(NetworkConfig {
+                    name: "testnet".to_string(),
+                    rpc_url: rpc,
+                    ws_url: env::var("SUI_WS_URL").expect("SUI_WS_URL must be set"),
+                    package_id: env::var("SUI_PACKAGE_ID").expect("SUI_PACKAGE_ID must be set"),
+                });
+            }
         }
 
         // Mainnet
-        if let Ok(rpc) = env::var("MAINNET_RPC_URL") {
-            networks.push(NetworkConfig {
-                name: "mainnet".to_string(),
-                rpc_url: rpc,
-                ws_url: env::var("MAINNET_WS_URL").expect("MAINNET_WS_URL must be set"),
-                package_id: env::var("MAINNET_PACKAGE_ID").expect("MAINNET_PACKAGE_ID must be set"),
-            });
+        if (active_network == "all" || active_network == "mainnet") {
+            if let Ok(rpc) = env::var("MAINNET_RPC_URL") {
+                networks.push(NetworkConfig {
+                    name: "mainnet".to_string(),
+                    rpc_url: rpc,
+                    ws_url: env::var("MAINNET_WS_URL").expect("MAINNET_WS_URL must be set"),
+                    package_id: env::var("MAINNET_PACKAGE_ID").expect("MAINNET_PACKAGE_ID must be set"),
+                });
+            }
         }
 
         Self {

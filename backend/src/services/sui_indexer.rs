@@ -41,7 +41,7 @@ async fn connect_and_subscribe(ws_url: &str, rpc_url: &str, package_id: &str, db
     let (ws_stream, _) = connect_async(url).await?;
     let (mut write, mut read) = ws_stream.split();
 
-    info!("WebSocket connected");
+    info!("[{}] WebSocket connected", network);
 
     // Subscribe to all events from the module
     let subscribe_request = json!({
@@ -53,13 +53,14 @@ async fn connect_and_subscribe(ws_url: &str, rpc_url: &str, package_id: &str, db
         ]
     });
 
+    info!("[{}] Sending subscription request: {}", network, subscribe_request);
     write.send(Message::Text(subscribe_request.to_string())).await?;
 
     while let Some(msg) = read.next().await {
         let msg = msg?;
         if let Message::Text(text) = msg {
             // Handle keep-alive or generic responses
-            // info!("Received msg: {}", text); 
+            info!("[{}] Received msg: {}", network, text); 
 
             let json: serde_json::Value = serde_json::from_str(&text)?;
             
@@ -81,9 +82,9 @@ async fn connect_and_subscribe(ws_url: &str, rpc_url: &str, package_id: &str, db
                     }
                 }
             } else if let Some(error) = json.get("error") {
-                error!("Subscription error response: {:?}", error);
+                error!("[{}] Subscription error response: {:?}", network, error);
             } else if let Some(result) = json.get("result") {
-                info!("Subscription confirmed, ID: {}", result);
+                info!("[{}] Subscription confirmed, ID: {}", network, result);
             }
         }
     }
@@ -267,6 +268,92 @@ async fn process_claimed_event(db: &DatabaseConnection, network: &str, event: Su
             }
         }
     }
+}
+
+pub async fn sync_envelope_by_id(db: &DatabaseConnection, network: &str, rpc_url: &str, object_id: &str) -> anyhow::Result<()> {
+    use crate::models::envelopes::ActiveModel;
+    
+    info!("Manually syncing envelope {} on network {}", object_id, network);
+
+    let client = reqwest::Client::new();
+    let query = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "sui_getObject",
+        "params": [
+            object_id,
+            { "showContent": true, "showType": true }
+        ]
+    });
+
+    let res = client.post(rpc_url).json(&query).send().await?;
+    let json: serde_json::Value = res.json().await?;
+    
+    let data = &json["result"]["data"];
+    if data.is_null() {
+        return Err(anyhow::anyhow!("Object not found on chain"));
+    }
+
+    let type_str = data["type"].as_str().unwrap_or_default();
+    if !type_str.contains("::RedEnvelope<") {
+        return Err(anyhow::anyhow!("Invalid object type: {}", type_str));
+    }
+
+    let content = &data["content"]["fields"];
+    let owner = content["owner"].as_str().unwrap_or_default();
+    let total_amount = content["total_amount"].as_str().unwrap_or("0");
+    let total_count = content["total_count"].as_str().unwrap_or("0").parse::<i64>().unwrap_or(0);
+    let remaining_count = content["remaining_count"].as_str().unwrap_or("0").parse::<i64>().unwrap_or(0);
+    let mode = content["mode"].as_u64().unwrap_or(0) as i16;
+    let requires_verification = content["requires_verification"].as_bool().unwrap_or(false);
+
+    // Extract coin type
+    let coin_type = if let (Some(start), Some(end)) = (type_str.find('<'), type_str.rfind('>')) {
+        type_str[start + 1..end].to_string()
+    } else {
+        "Unknown".to_string()
+    };
+
+    let amount_dec = Decimal::from_str_exact(total_amount).unwrap_or_default();
+
+    // Upsert logic
+    let model = ActiveModel {
+        envelope_id: Set(object_id.to_string()),
+        network: Set(network.to_string()),
+        owner: Set(owner.to_string()),
+        coin_type: Set(coin_type),
+        total_amount: Set(amount_dec),
+        total_count: Set(total_count),
+        mode: Set(mode),
+        remaining_count: Set(remaining_count),
+        is_active: Set(true),
+        requires_verification: Set(requires_verification),
+        // Keep existing created_at or use current if missing
+        created_at: Set(chrono::Utc::now().naive_utc()), 
+        tx_digest: Set("manual_sync".to_string()),
+    };
+
+    // We use a custom query to update if exists, or insert if not
+    // In SeaORM we can use OnConflict but it varies by DB.
+    // Simpler: check if exists
+    let existing = envelopes::Entity::find()
+        .filter(envelopes::Column::EnvelopeId.eq(object_id))
+        .filter(envelopes::Column::Network.eq(network))
+        .one(db)
+        .await?;
+
+    if let Some(env) = existing {
+        let mut active: ActiveModel = env.into();
+        active.remaining_count = Set(remaining_count);
+        active.is_active = Set(true);
+        active.update(db).await?;
+        info!("Updated existing envelope via sync: {}", object_id);
+    } else {
+        envelopes::Entity::insert(model).exec(db).await?;
+        info!("Inserted new envelope via sync: {}", object_id);
+    }
+
+    Ok(())
 }
 
 async fn update_envelope_decrement(db: &DatabaseConnection, env_id: &str, network: &str) -> Result<(), DbErr> {

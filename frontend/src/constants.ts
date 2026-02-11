@@ -13,7 +13,7 @@ export const SUI_RANDOM_ID = "0x8"; // System Random Object
 export const REGISTRY_ID = NETWORK === "mainnet" 
     ? "0x41b378e340fb32caa3efeeb770a8e3a762079cf76ee793ac0fb09eebef1edd36" 
     : "0x878b84d4e82460018bfe5d86a6de12e9178a7012f8642ee3fb8939b3607c9ffa"; // Updated via deployment
-export const BACKEND_URL = "http://127.0.0.1:3000"; // Assuming default backend port
+export const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:3000";
 
 // Discord Config (Get these from Discord Developer Portal)
 export const DISCORD_CLIENT_ID = "1470743070315122891"; 

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useSuiClientQuery } from '@mysten/dapp-kit';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { BACKEND_URL, NETWORK, formatAmount, getCoinConfig } from '../constants';
 import { ArrowUpRight, Copy } from 'lucide-react';

@@ -68,3 +68,53 @@ https://www.deepsurge.xyz/community/218e11e1-cde0-4401-8edf-61bc3636603d
 https://docs.stablelayer.site/
 
 https://github.com/StableLayer/stable-layer-sdk
+
+## 🚀 部署与构建指南
+
+### 后端 (Rust)
+1. **环境要求**:
+   - `cargo`, `rustc`
+   - `cargo-zigbuild` (用于交叉编译 Linux 版本)
+   - `zig`
+
+2. **交叉编译命令** (无需 OpenSSL 系统库依赖):
+   ```bash
+   cd backend
+   # 已开启 vendored 特性，自动编译 OpenSSL
+   cargo zigbuild --release --target x86_64-unknown-linux-gnu
+   ```
+   产物位置: `backend/target/x86_64-unknown-linux-gnu/release/stable-gift-backend`
+
+3. **运行配置**:
+   - 修改 `.env` 文件:
+     - `ACTIVE_NETWORK`: 设置为 `mainnet`, `testnet` 或 `all` 来控制索引器监听的网络。
+     - RPC 节点配置: 推荐使用官方或稳定的公共节点。
+   - 启动脚本:
+     ```bash
+     chmod +x start.sh stop.sh
+     ./start.sh
+     ```
+
+### 前端 (React)
+1. **构建**:
+   ```bash
+   cd frontend
+   npm run build
+   ```
+   产物位于 `frontend/dist`。
+
+2. **环境变量**:
+   - 生产环境接口地址通过 `.env.production` 中的 `VITE_API_BASE_URL` 配置。
+
+### Nginx 配置参考 (解决 404 问题)
+```nginx
+location / {
+    # 解决 SPA 页面刷新 404
+    try_files $uri $uri/ /index.html;
+}
+
+location /api/ {
+    # 反向代理后端 (注意不要带末尾斜杠)
+    proxy_pass http://127.0.0.1:3000;
+}
+```

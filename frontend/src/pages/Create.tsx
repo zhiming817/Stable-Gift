@@ -3,7 +3,7 @@ import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit';
 import { cn, Button } from '../components/ui';
 import { useContract } from '../hooks/useContract';
 import { useNavigate } from 'react-router-dom';
-import { Coins, Info, CheckCircle2, Copy } from 'lucide-react';
+import { Info, CheckCircle2, Copy } from 'lucide-react';
 import { PACKAGE_ID, NETWORK, COIN_OPTIONS } from '../constants';
 
 export const CreatePage: React.FC = () => {

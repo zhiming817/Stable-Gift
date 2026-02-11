@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useContract } from '../hooks/useContract';
 import { Button } from '../components/ui';
-import { Loader2, PartyPopper, Gift, Info, ExternalLink, CheckCircle2 } from 'lucide-react';
-import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit';
+import { Loader2, PartyPopper, Gift, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { useCurrentAccount } from '@mysten/dapp-kit';
 import { NETWORK, getCoinConfig, formatAmount, BACKEND_URL, DISCORD_CLIENT_ID, DISCORD_REDIRECT_URI } from '../constants';
 import { useQuery } from '@tanstack/react-query';
 import { Disc as Discord } from 'lucide-react';
@@ -12,7 +12,6 @@ export const ClaimPage: React.FC = () => {
     const { id: urlId } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { claimEnvelope } = useContract();
-    const suiClient = useSuiClient();
     const account = useCurrentAccount();
     
     // States: 'idle' | 'claiming' | 'success'
