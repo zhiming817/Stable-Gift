@@ -113,7 +113,17 @@ export const ClaimPage: React.FC = () => {
         claimEnvelope(
             id,
             signature,
-            () => {
+            async (digest) => {
+                // Sync Claim with Backend
+                try {
+                    await fetch(`${BACKEND_URL}/api/claims/sync/${digest}?network=${NETWORK}`, {
+                        method: 'POST'
+                    });
+                    console.log("Claim synchronized with backend:", digest);
+                } catch (e) {
+                    console.error("Failed to sync claim with backend:", e);
+                }
+
                 setStatus('success');
                 refetch();
             },

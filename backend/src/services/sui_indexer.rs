@@ -289,9 +289,14 @@ pub async fn sync_envelope_by_id(db: &DatabaseConnection, network: &str, rpc_url
     let res = client.post(rpc_url).json(&query).send().await?;
     let json: serde_json::Value = res.json().await?;
     
+    // Check if error
+    if let Some(err) = json.get("error") {
+        return Err(anyhow::anyhow!("RPC Error during sync_envelope_by_id: {:?}", err));
+    }
+    
     let data = &json["result"]["data"];
     if data.is_null() {
-        return Err(anyhow::anyhow!("Object not found on chain"));
+        return Err(anyhow::anyhow!("Object not found on chain: {}", object_id));
     }
 
     let type_str = data["type"].as_str().unwrap_or_default();
@@ -306,6 +311,24 @@ pub async fn sync_envelope_by_id(db: &DatabaseConnection, network: &str, rpc_url
     let remaining_count = content["remaining_count"].as_str().unwrap_or("0").parse::<i64>().unwrap_or(0);
     let mode = content["mode"].as_u64().unwrap_or(0) as i16;
     let requires_verification = content["requires_verification"].as_bool().unwrap_or(false);
+
+    // Extract current balance to determine if active
+    // Balance<T> is usually represented as { fields: { value: "..." } } or just value depending on context
+    // We try to parse it safely
+    let current_balance = if let Some(val) = content["balance"].as_u64() {
+        val
+    } else if let Some(str_val) = content["balance"].as_str() {
+        str_val.parse::<u64>().unwrap_or(0)
+    } else {
+         content["balance"].get("fields")
+            .and_then(|f| f.get("value"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.parse::<u64>().unwrap_or(0))
+            .unwrap_or(0)
+    };
+    
+    // Determine status: Active if remaining > 0 AND has balance
+    let is_active = remaining_count > 0 && current_balance > 0;
 
     // Extract coin type
     let coin_type = if let (Some(start), Some(end)) = (type_str.find('<'), type_str.rfind('>')) {
@@ -326,7 +349,7 @@ pub async fn sync_envelope_by_id(db: &DatabaseConnection, network: &str, rpc_url
         total_count: Set(total_count),
         mode: Set(mode),
         remaining_count: Set(remaining_count),
-        is_active: Set(true),
+        is_active: Set(is_active),
         requires_verification: Set(requires_verification),
         // Keep existing created_at or use current if missing
         created_at: Set(chrono::Utc::now().naive_utc()), 
@@ -345,7 +368,7 @@ pub async fn sync_envelope_by_id(db: &DatabaseConnection, network: &str, rpc_url
     if let Some(env) = existing {
         let mut active: ActiveModel = env.into();
         active.remaining_count = Set(remaining_count);
-        active.is_active = Set(true);
+        active.is_active = Set(is_active);
         active.update(db).await?;
         info!("Updated existing envelope via sync: {}", object_id);
     } else {
@@ -354,6 +377,76 @@ pub async fn sync_envelope_by_id(db: &DatabaseConnection, network: &str, rpc_url
     }
 
     Ok(())
+}
+
+pub async fn sync_claim_by_tx(db: &DatabaseConnection, network: &str, rpc_url: &str, tx_digest: &str) -> anyhow::Result<()> {
+    info!("Manually syncing claim for tx {} on network {}", tx_digest, network);
+
+    let client = reqwest::Client::new();
+    let query = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "sui_getTransactionBlock",
+        "params": [
+            tx_digest,
+            { "showEvents": true }
+        ]
+    });
+
+    let res = client.post(rpc_url).json(&query).send().await?;
+    let json: serde_json::Value = res.json().await?;
+    
+    // Check for error
+    if let Some(err) = json.get("error") {
+        return Err(anyhow::anyhow!("RPC Error: {:?}", err));
+    }
+
+    let timestamp_ms = json["result"]["timestampMs"].as_str().map(|s| s.to_string());
+
+    let events = &json["result"]["events"];
+    if let Some(events_arr) = events.as_array() {
+        for event_json in events_arr {
+             let type_str = event_json["type"].as_str().unwrap_or_default();
+             
+             if type_str.contains("::EnvelopeClaimed") {
+                 let parsed_json = &event_json["parsedJson"];
+                 let env_id = parsed_json["id"].as_str().unwrap_or_default();
+                 
+                 // CHECK ENVELOPE EXISTENCE
+                 let env_exists = envelopes::Entity::find()
+                    .filter(envelopes::Column::EnvelopeId.eq(env_id))
+                    .filter(envelopes::Column::Network.eq(network))
+                    .one(db)
+                    .await?;
+                    
+                 if env_exists.is_none() {
+                     info!("Envelope {} not found for claim {}, syncing envelope first...", env_id, tx_digest);
+                     // Add delay before calling RPC again to allow indexer to catch up
+                     sleep(Duration::from_millis(500)).await;
+
+                     if let Err(e) = sync_envelope_by_id(db, network, rpc_url, env_id).await {
+                         error!("Failed to sync envelope {}: {:?}", env_id, e);
+                         // Continue to try to process claim? Or fail? 
+                         // Fail is better because constraints might fail.
+                         return Err(e);
+                     }
+                 }
+                 
+                 let event_struct = SuiEvent {
+                     id: SuiEventId { tx_digest: tx_digest.to_string() },
+                     timestamp_ms: timestamp_ms.clone(),
+                     parsed_json: parsed_json.clone(),
+                     type_: type_str.to_string(),
+                 };
+                 
+                 process_claimed_event(db, network, event_struct).await;
+                 return Ok(());
+             }
+        }
+        return Err(anyhow::anyhow!("No claim event found in transaction"));
+    } else {
+        return Err(anyhow::anyhow!("No properties found in transaction result"));
+    }
 }
 
 async fn update_envelope_decrement(db: &DatabaseConnection, env_id: &str, network: &str) -> Result<(), DbErr> {

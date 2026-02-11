@@ -15,6 +15,7 @@ pub struct Config {
     pub networks: Vec<NetworkConfig>,
     pub server_host: String,
     pub server_port: String,
+    pub enable_websocket: bool,
 }
 
 impl Config {
@@ -23,6 +24,11 @@ impl Config {
 
         let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
         let server_host = env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let server_port = env::var("SERVER_PORT").unwrap_or_else(|_| "3000".to_string());
+        let enable_websocket = env::var("ENABLE_WEBSOCKET")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse::<bool>()
+            .unwrap_or(true);
         let active_network = env::var("ACTIVE_NETWORK").unwrap_or_else(|_| "all".to_string());
         
         let mut networks = Vec::new();
@@ -63,7 +69,8 @@ impl Config {
             database_url,
             networks,
             server_host,
-            server_port: env::var("SERVER_PORT").unwrap_or_else(|_| "3000".to_string()),
+            server_port,
+            enable_websocket,
         }
     }
 }

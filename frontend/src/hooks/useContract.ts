@@ -213,5 +213,36 @@ export const useContract = () => {
         }
     };
 
-    return { createEnvelope, claimEnvelope };
+    const withdrawRemaining = async (
+        envelopeId: string,
+        coinType: string,
+        onSuccess: (digest: string) => void,
+        onError: (err: any) => void
+    ) => {
+        try {
+            const tx = new Transaction();
+
+            tx.moveCall({
+                target: `${PACKAGE_ID}::${MODULE_NAME}::withdraw_remaining`,
+                arguments: [
+                    tx.object(envelopeId),
+                ],
+                typeArguments: [coinType],
+            });
+
+            signAndExecute(
+                {
+                    transaction: tx,
+                },
+                {
+                    onSuccess: (result) => onSuccess(result.digest),
+                    onError,
+                }
+            );
+        } catch (e: any) {
+            onError(e);
+        }
+    };
+
+    return { createEnvelope, claimEnvelope, withdrawRemaining };
 };

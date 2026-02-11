@@ -155,3 +155,22 @@ pub async fn sync_envelope(
 
     Ok(Json(json!({ "status": "success", "message": "Envelope synced" })))
 }
+
+pub async fn sync_claim(
+    State(state): State<AppState>,
+    Path(tx_digest): Path<String>,
+    Query(query): Query<GeneralQuery>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let network = query.network.unwrap_or_else(|| "testnet".to_string());
+    
+    // Find RPC URL
+    let network_conf = state.config.networks.iter()
+        .find(|n| n.name == network)
+        .ok_or((StatusCode::BAD_REQUEST, format!("Network {} not configured", network)))?;
+
+    sui_indexer::sync_claim_by_tx(&state.db, &network, &network_conf.rpc_url, &tx_digest)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(json!({ "status": "success", "message": "Claim synced" })))
+}

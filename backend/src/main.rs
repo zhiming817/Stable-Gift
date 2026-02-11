@@ -30,9 +30,13 @@ async fn main() {
     let db = db::connect(&config).await.expect("Failed to connect to database");
     tracing::info!("Connected to database");
 
-    // Start Indexers for all configured networks
-    for network_config in config.networks.clone() {
-        services::sui_indexer::start_indexer(db.clone(), network_config).await;
+    // Start Indexers for all configured networks if enabled
+    if config.enable_websocket {
+        for network_config in config.networks.clone() {
+            services::sui_indexer::start_indexer(db.clone(), network_config).await;
+        }
+    } else {
+        tracing::info!("WebSocket indexer is disabled by configuration");
     }
 
     let state = AppState {
@@ -54,6 +58,7 @@ async fn main() {
         .route("/api/envelopes/created", get(controllers::envelopes::list_created))
         .route("/api/envelopes/claimed", get(controllers::envelopes::list_claimed))
         .route("/api/envelopes/sync/:id", post(controllers::envelopes::sync_envelope))
+        .route("/api/claims/sync/:tx_digest", post(controllers::envelopes::sync_claim))
         .route("/api/envelopes/:id", get(controllers::envelopes::get_details))
         .route("/api/verify-discord", post(controllers::verification::verify_discord))
         .layer(cors)

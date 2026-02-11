@@ -19,9 +19,9 @@ export const Header: React.FC = () => {
                     <Link to="/mint" className="text-cyan-400/80 hover:text-cyan-400 transition-colors ">Stablecoins</Link>
                     <Link to="/create" className="text-slate-300 hover:text-white transition-colors">Send Gift</Link>
                     <Link to="/explore" className="text-slate-300 hover:text-white transition-colors">Explore</Link>
-                    <Link to="/claim" className="text-slate-300 hover:text-white transition-colors">Claim</Link>
+                    {/* <Link to="/claim" className="text-slate-300 hover:text-white transition-colors">Claim</Link> */}
                     <Link to="/dashboard" className="text-slate-300 hover:text-white transition-colors">Dashboard</Link>
-                    <Link to="/sync" className="text-slate-300 hover:text-white transition-colors">Sync</Link>
+                    {/* <Link to="/sync" className="text-slate-300 hover:text-white transition-colors">Sync</Link> */}
                 </nav>
 
                 <div className="flex items-center gap-2">

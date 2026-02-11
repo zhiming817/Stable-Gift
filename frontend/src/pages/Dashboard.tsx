@@ -2,11 +2,15 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { BACKEND_URL, NETWORK, formatAmount, getCoinConfig } from '../constants';
-import { ArrowUpRight, Copy } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { formatDate } from '../utils/fmt';
+import { ArrowUpRight, Copy, RotateCcw } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useContract } from '../hooks/useContract';
 
 export const Dashboard: React.FC = () => {
     const account = useCurrentAccount();
+    const { withdrawRemaining } = useContract();
+    const queryClient = useQueryClient();
     const [view, setView] = React.useState<'created' | 'claimed'>('created');
 
     const { data: envelopes, isPending, error } = useQuery({
@@ -19,6 +23,34 @@ export const Dashboard: React.FC = () => {
         },
         enabled: !!account,
     });
+
+    const handleRecycle = (envelopeId: string, coinType: string) => {
+        if (!confirm('Are you sure you want to withdraw the remaining balance?')) return;
+        
+        withdrawRemaining(
+            envelopeId,
+            coinType,
+            async (digest) => {
+                alert(`Recycle successful! Tx: ${digest}\nSyncing status...`);
+                // Wait 2 seconds for RPC to index
+                await new Promise(r => setTimeout(r, 2000));
+                
+                try {
+                    // Sync with backend to update status
+                    await fetch(`${BACKEND_URL}/api/envelopes/sync/${envelopeId}?network=${NETWORK}`, {
+                        method: 'POST'
+                    });
+                    queryClient.invalidateQueries({ queryKey: ['envelopes'] });
+                } catch (e) {
+                    console.error("Sync failed", e);
+                }
+            },
+            (err) => {
+                console.error(err);
+                alert(`Recycle failed: ${err.message || String(err)}`);
+            }
+        )
+    };
 
     return (
         <div className="pt-24 pb-12 px-4 container mx-auto">
@@ -81,9 +113,9 @@ export const Dashboard: React.FC = () => {
                                 <tr key={idx} className="border-t border-slate-700/50 hover:bg-slate-800/30 transition-colors">
                                     <td className="p-4">
                                         <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
-                                            envelope.remaining_count > 0 ? 'bg-green-500/20 text-green-300' : 'bg-slate-500/20 text-slate-400'
+                                            envelope.is_active ? 'bg-green-500/20 text-green-300' : 'bg-slate-500/20 text-slate-400'
                                         }`}>
-                                            {envelope.remaining_count > 0 ? '● Active' : '○ Finished'}
+                                            {envelope.is_active ? '● Active' : '○ Finished'}
                                         </span>
                                     </td>
                                     <td className="p-4 font-mono text-slate-300 text-xs">
@@ -116,12 +148,21 @@ export const Dashboard: React.FC = () => {
                                             >
                                                 <Copy className="w-3.5 h-3.5" />
                                             </button>
+                                            {view === 'created' && envelope.is_active && (
+                                                <button 
+                                                    onClick={() => handleRecycle(envelope.envelope_id, envelope.coin_type)}
+                                                    className="p-1 hover:bg-slate-700 rounded-md text-amber-500 transition-colors"
+                                                    title="Recycle remaining funds"
+                                                >
+                                                    <RotateCcw className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="p-4 text-slate-300">
                                         <div className="flex flex-col">
                                             <span>Total: {formatAmount(envelope.total_amount, decimals)} {symbol}</span>
-                                            <span className="text-xs text-slate-500">{new Date(envelope.created_at).toLocaleString()}</span>
+                                            <span className="text-xs text-slate-500">{formatDate(envelope.created_at)}</span>
                                         </div>
                                     </td>
                                     <td className="p-4 text-cyan-500 font-mono">

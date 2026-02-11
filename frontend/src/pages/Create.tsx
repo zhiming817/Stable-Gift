@@ -4,7 +4,7 @@ import { cn, Button } from '../components/ui';
 import { useContract } from '../hooks/useContract';
 import { useNavigate } from 'react-router-dom';
 import { Info, CheckCircle2, Copy } from 'lucide-react';
-import { PACKAGE_ID, NETWORK, COIN_OPTIONS } from '../constants';
+import { PACKAGE_ID, NETWORK, COIN_OPTIONS, BACKEND_URL } from '../constants';
 
 export const CreatePage: React.FC = () => {
     const account = useCurrentAccount();
@@ -72,7 +72,17 @@ export const CreatePage: React.FC = () => {
             parseInt(count),
             mode,
             requiresVerification,
-            (id) => {
+            async (id) => {
+                try {
+                    // Sync with backend
+                    await fetch(`${BACKEND_URL}/api/envelopes/sync/${id}?network=${NETWORK}`, {
+                        method: 'POST'
+                    });
+                    console.log(`Envelope ${id} synced with backend`);
+                } catch (error) {
+                    console.error("Failed to sync envelope with backend:", error);
+                }
+
                 setLoading(false);
                 setCreatedId(id);
                 setShowModal(true); 
